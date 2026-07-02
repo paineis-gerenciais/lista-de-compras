@@ -429,13 +429,13 @@ const SYNC_CONFIG_KEY = 'shopping-app-sync-config';
 
 async function loadData(){
   try{
-    const res = await window.storage.get(STORAGE_KEY);
-    if(res && res.value) return JSON.parse(res.value);
-  }catch(e){ /* not found yet */ }
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* not found yet ou storage indisponível */ }
   return { lists: [], activeListId: null, finishedLists: [], appMode: 'simple', theme: 'light', itemHistory: {}, updatedAt: 0 };
 }
 async function saveDataLocal(){
-  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state)); }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ console.error('Erro ao salvar', e); showToast('Não foi possível salvar agora'); }
 }
 async function saveData(){
@@ -452,13 +452,13 @@ let syncStatus = 'off'; // off | syncing | synced | error | offline
 
 async function loadSyncConfig(){
   try{
-    const res = await window.storage.get(SYNC_CONFIG_KEY);
-    if(res && res.value) syncConfig = JSON.parse(res.value);
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    if(raw) syncConfig = JSON.parse(raw);
   }catch(e){ /* sem config ainda */ }
 }
 async function saveSyncConfig(cfg){
   syncConfig = cfg;
-  try{ await window.storage.set(SYNC_CONFIG_KEY, JSON.stringify(syncConfig)); }
+  try{ localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(syncConfig)); }
   catch(e){ console.error('Erro ao salvar config de sync', e); }
 }
 
