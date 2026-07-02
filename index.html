@@ -44,6 +44,34 @@
     *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
   }
 
+  /* ---------- Tema escuro (versão completa) ---------- */
+  body.theme-dark{
+    --paper:#1c1b18;
+    --card:#252420;
+    --ink:#EDE7DA;
+    --ink-light:#A79C89;
+    --green:#5FA875;
+    --green-light:#28352C;
+    --amber:#D98F52;
+    --amber-light:#3A2E22;
+    --red:#E08064;
+    --border:#3A362D;
+    --shadow:rgba(0,0,0,0.5);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0) 0 0/14px 14px,
+      var(--paper);
+  }
+  body.theme-dark input[type=text], body.theme-dark input[type=number],
+  body.theme-dark select, body.theme-dark .search-row input, body.theme-dark .add-item-form input,
+  body.theme-dark .add-item-form select{
+    background:var(--card); color:var(--ink); border-color:var(--border);
+  }
+
+  /* ---------- Acessibilidade ---------- */
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--green); outline-offset:2px;
+  }
+
   /* ---------- Header ---------- */
   header.app-header{
     position:sticky; top:0; z-index:30;
@@ -70,6 +98,18 @@
   }
   .icon-btn:active{background:var(--green-light); border-color:var(--green);}
 
+  .mode-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;
+  }
+  .mode-switch{
+    display:flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card);
+  }
+  .mode-switch button{
+    font-family:'Space Mono',monospace; font-size:11px; padding:7px 13px; border:none;
+    background:transparent; color:var(--ink-light); cursor:pointer;
+  }
+  .mode-switch button.active{background:var(--ink); color:var(--card);}
+
   .tabs-row{
     display:flex; gap:8px; overflow-x:auto; margin-top:12px; padding-bottom:4px;
     scrollbar-width:none;
@@ -92,6 +132,7 @@
     background:var(--ink); color:var(--card); border-color:var(--ink);
   }
   .tab .rec-mark{font-size:11px;}
+  .tab .overdue-dot{font-size:9px; color:var(--red);}
   .tab.add-tab{
     color:var(--green); border-color:var(--green); border-style:dashed;
     background:transparent;
@@ -134,6 +175,7 @@
     font-size:11px; color:var(--ink-light); display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
   }
   .receipt-head .list-meta .rec-badge{color:var(--green); font-weight:600;}
+  .receipt-head .list-meta .overdue-badge{color:var(--red); font-weight:700;}
 
   .progress-row{
     display:flex; align-items:center; gap:10px; padding:12px 0 10px; border-bottom:1px dashed var(--border);
@@ -148,6 +190,18 @@
     font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-light); white-space:nowrap;
   }
 
+  .total-row{
+    font-family:'Space Mono',monospace; font-size:12px; color:var(--ink-light);
+    padding:8px 0; border-bottom:1px dashed var(--border); text-align:right;
+  }
+  .total-row strong{color:var(--ink);}
+
+  .search-row{padding:10px 0 2px;}
+  .search-row input{
+    width:100%; font-family:'Inter',sans-serif; font-size:14px; padding:9px 10px;
+    border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink);
+  }
+
   .category-block{padding-top:12px;}
   .category-title{
     font-family:'Space Mono',monospace; font-size:11px; letter-spacing:1.5px;
@@ -159,7 +213,7 @@
   }
 
   .item-row{
-    display:flex; align-items:flex-start; gap:10px;
+    display:flex; align-items:flex-start; gap:8px;
     padding:8px 0;
     border-bottom:1px dotted var(--border);
   }
@@ -176,8 +230,26 @@
   .item-name-row{display:flex; gap:6px; align-items:baseline; flex-wrap:wrap;}
   .item-name{font-size:14.5px; font-weight:500; word-break:break-word;}
   .item-row.bought .item-name{text-decoration:line-through; color:var(--ink-light); font-weight:400;}
+  .item-price{font-family:'Space Mono',monospace; font-size:11px; color:var(--green); margin-top:2px;}
   .item-qty{
     font-family:'Space Mono',monospace; font-size:12px; color:var(--ink-light); flex-shrink:0;
+    white-space:nowrap; margin-top:2px;
+  }
+  .drag-handle{
+    cursor:grab; touch-action:none; color:var(--ink-light); font-size:17px;
+    padding:2px 6px; flex-shrink:0; user-select:none; -webkit-user-select:none;
+    display:flex; align-items:center; line-height:1;
+  }
+  .drag-handle:active{cursor:grabbing;}
+  .item-row.dragging{
+    opacity:0.45; background:var(--green-light); border-radius:6px;
+  }
+  body.dragging-active, body.dragging-active *{
+    user-select:none !important; -webkit-user-select:none !important;
+  }
+  .item-edit{
+    background:none; border:none; color:var(--ink-light); cursor:pointer; padding:4px;
+    flex-shrink:0; font-size:14px; line-height:1; margin-top:1px;
   }
   .item-del{
     background:none; border:none; color:var(--ink-light); cursor:pointer; padding:4px;
@@ -194,7 +266,9 @@
   }
   .add-item-form .f-name{flex:1 1 140px; min-width:120px;}
   .add-item-form .f-qty{width:64px;}
+  .add-item-form .f-unit{width:78px;}
   .add-item-form .f-cat{flex:1 1 110px; min-width:100px;}
+  .add-item-form .f-price{width:84px;}
   .add-item-form button{
     font-family:'Space Mono',monospace; font-weight:700; font-size:13px;
     background:var(--green); color:#fff; border:none; border-radius:6px;
@@ -244,9 +318,9 @@
   .modal p.sub{font-size:13px; color:var(--ink-light); margin:0 0 16px;}
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-light); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;}
-  .field input[type=text], .field input[type=number]{
+  .field input[type=text], .field input[type=number], .field select{
     width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px;
-    border:1px solid var(--border); border-radius:8px; background:#fff;
+    border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--ink);
   }
   .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0;}
   .toggle-row label{font-size:14px; font-weight:500; margin:0;}
@@ -270,6 +344,11 @@
   }
   .modal-buttons button.primary{background:var(--green); color:#fff; border-color:var(--green);}
   .modal-buttons button.danger{background:#fff; color:var(--red); border-color:var(--red);}
+  .text-danger-link{
+    display:block; width:100%; text-align:center; background:none; border:none;
+    color:var(--red); font-family:'Space Mono',monospace; font-size:12px; padding:14px 0 0;
+    cursor:pointer; text-decoration:underline;
+  }
 
   .carry-item{
     display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dotted var(--border);
@@ -283,12 +362,14 @@
   }
   .carry-toggle.keep{color:var(--green); border-color:var(--green); background:var(--green-light);}
   .carry-toggle.remove{color:var(--red); border-color:var(--red); background:#FBEAE5;}
+  body.theme-dark .carry-toggle.remove{background:#3a201c;}
 
   .map-options{display:flex; flex-direction:column; gap:10px;}
   .map-option-btn{
     display:flex; align-items:center; gap:12px; padding:13px; border-radius:10px;
     border:1px solid var(--border); background:#fff; cursor:pointer; text-align:left;
   }
+  body.theme-dark .map-option-btn{background:var(--card);}
   .map-option-btn .moi{font-size:20px;}
   .map-option-btn .mot strong{display:block; font-size:14px;}
   .map-option-btn .mot span{font-size:12px; color:var(--ink-light);}
@@ -301,7 +382,7 @@
   }
   .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
 
-  .cat-chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .cat-chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
   .cat-chip{
     font-family:'Space Mono',monospace; font-size:11px; padding:5px 9px; border-radius:99px;
     border:1px solid var(--border); background:#fff; cursor:pointer; color:var(--ink-light);
@@ -315,6 +396,7 @@
   <div class="brand">
     <h1><span class="dot">&#9679;</span>Lista de Compras</h1>
     <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="themeToggleBtn" title="Alternar tema" aria-label="Alternar tema" style="display:none;">🌙</button>
       <button class="icon-btn" id="syncBtn" title="Sincronização" aria-label="Sincronização">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/></svg>
       </button>
@@ -326,13 +408,19 @@
       </button>
     </div>
   </div>
+  <div class="mode-row">
+    <div class="mode-switch" id="modeSwitch" role="group" aria-label="Alternar versão do aplicativo">
+      <button type="button" class="mode-btn" data-mode="simple">Resumida</button>
+      <button type="button" class="mode-btn" data-mode="full">Completa</button>
+    </div>
+  </div>
   <div class="tabs-row" id="tabsRow"></div>
 </header>
 
 <main id="mainArea"></main>
 
 <button class="fab" id="fabAdd" title="Adicionar item" aria-label="Adicionar item">+</button>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* =================== STORAGE (local) =================== */
@@ -344,7 +432,7 @@ async function loadData(){
     const res = await window.storage.get(STORAGE_KEY);
     if(res && res.value) return JSON.parse(res.value);
   }catch(e){ /* not found yet */ }
-  return { lists: [], activeListId: null };
+  return { lists: [], activeListId: null, finishedLists: [], appMode: 'simple', theme: 'light', itemHistory: {}, updatedAt: 0 };
 }
 async function saveDataLocal(){
   try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state)); }
@@ -356,7 +444,7 @@ async function saveData(){
   scheduleCloudSync();
 }
 
-let state = { lists: [], activeListId: null, finishedLists: [], updatedAt: 0 };
+let state = { lists: [], activeListId: null, finishedLists: [], appMode: 'simple', theme: 'light', itemHistory: {}, updatedAt: 0 };
 
 /* =================== SINCRONIZAÇÃO (Apps Script + Sheets) =================== */
 let syncConfig = { url: '', token: '', enabled: false };
@@ -399,11 +487,7 @@ async function pushToCloud(){
       body: JSON.stringify({ token: syncConfig.token, state, updatedAt: state.updatedAt })
     });
     const data = await res.json();
-    if(data && data.ok){
-      setSyncStatus('synced');
-    } else {
-      setSyncStatus('error');
-    }
+    setSyncStatus(data && data.ok ? 'synced' : 'error');
   }catch(e){
     console.error('Erro ao sincronizar (envio)', e);
     setSyncStatus('offline');
@@ -420,11 +504,16 @@ async function pullFromCloudAndMerge(){
     if(data && data.ok){
       if(data.state && (data.updatedAt || 0) > (state.updatedAt || 0)){
         // nuvem mais recente que o dispositivo: adota a versão da nuvem
+        // preserva preferências locais de aparência (modo/tema) em vez de sobrescrever pela nuvem
+        const localAppMode = state.appMode, localTheme = state.theme;
         state = data.state;
+        if(!state.appMode) state.appMode = localAppMode || 'simple';
+        if(!state.theme) state.theme = localTheme || 'light';
+        if(!state.itemHistory) state.itemHistory = {};
         await saveDataLocal();
         render();
         showToast('Dados atualizados da nuvem');
-      } else if(state.lists && state.lists.length !== undefined){
+      } else {
         // dispositivo mais recente (ou nuvem vazia): envia o local
         await pushToCloud();
       }
@@ -484,18 +573,24 @@ function openSyncModal(){
   overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
 }
 const DEFAULT_CATEGORIES = ['Hortifruti','Açougue','Mercearia','Limpeza','Higiene','Bebidas','Padaria','Outros'];
+const DEFAULT_UNITS = ['','un','kg','g','L','ml','pacote','caixa','dz'];
+let currentSearch = '';
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 function getActiveList(){
   return state.lists.find(l => l.id === state.activeListId) || null;
 }
+function isFullMode(){ return state.appMode === 'full'; }
 
 /* =================== INIT =================== */
 async function init(){
   state = await loadData();
   if(!state.lists) state.lists = [];
   if(!state.finishedLists) state.finishedLists = [];
+  if(!state.appMode) state.appMode = 'simple';
+  if(!state.theme) state.theme = 'light';
+  if(!state.itemHistory) state.itemHistory = {};
   if(!state.updatedAt) state.updatedAt = 0;
   if(state.lists.length === 0){
     // primeira vez: cria uma lista de exemplo "Mercado"
@@ -532,18 +627,29 @@ function createListObject(name, recurring, frequencyDays, baseName){
 
 /* =================== RENDER =================== */
 function render(){
+  const isFull = isFullMode();
+  document.body.classList.toggle('theme-dark', isFull && state.theme === 'dark');
+  document.querySelectorAll('#modeSwitch .mode-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mode === state.appMode);
+  });
+  const themeBtn = document.getElementById('themeToggleBtn');
+  themeBtn.style.display = isFull ? 'flex' : 'none';
+  themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
   renderTabs();
   renderMain();
 }
 
 function renderTabs(){
+  const isFull = isFullMode();
   const row = document.getElementById('tabsRow');
   row.innerHTML = '';
   state.lists.forEach(l=>{
     const tab = document.createElement('button');
     tab.className = 'tab' + (l.id === state.activeListId ? ' active' : '');
-    tab.innerHTML = (l.recurring.enabled ? '<span class="rec-mark">&#8635;</span> ' : '') + escapeHtml(l.name);
-    tab.onclick = ()=>{ state.activeListId = l.id; saveData(); render(); };
+    const overdue = isFull && l.recurring.enabled && (Date.now() > (l.createdAt + (l.recurring.frequencyDays||7)*86400000));
+    tab.innerHTML = (l.recurring.enabled ? '<span class="rec-mark">&#8635;</span> ' : '') +
+      (overdue ? '<span class="overdue-dot">&#9679;</span> ' : '') + escapeHtml(l.name);
+    tab.onclick = ()=>{ currentSearch=''; state.activeListId = l.id; saveData(); render(); };
     row.appendChild(tab);
   });
   const addTab = document.createElement('button');
@@ -554,6 +660,7 @@ function renderTabs(){
 }
 
 function renderMain(){
+  const isFull = isFullMode();
   const main = document.getElementById('mainArea');
   main.innerHTML = '';
   const list = getActiveList();
@@ -568,6 +675,12 @@ function renderMain(){
 
   const total = list.items.length;
   const bought = list.items.filter(i=>i.bought).length;
+  const totalEstimate = list.items.reduce((sum, it)=>{
+    const price = parseFloat(it.price);
+    if(isNaN(price)) return sum;
+    const qty = parseFloat(it.qty);
+    return sum + price * (isNaN(qty) ? 1 : qty);
+  }, 0);
 
   const receipt = document.createElement('div');
   receipt.className = 'receipt';
@@ -576,6 +689,10 @@ function renderMain(){
   const metaParts = [];
   if(list.recurring.enabled) metaParts.push(`<span class="rec-badge">&#8635; recorrente · a cada ${list.recurring.frequencyDays}d</span>`);
   metaParts.push(new Date(list.createdAt).toLocaleDateString('pt-BR'));
+  if(isFull){
+    const overdue = list.recurring.enabled && (Date.now() > (list.createdAt + (list.recurring.frequencyDays||7)*86400000));
+    if(overdue) metaParts.push(`<span class="overdue-badge">&#9888; recorrência atrasada</span>`);
+  }
 
   receipt.innerHTML = `
     <div class="receipt-head">
@@ -586,13 +703,19 @@ function renderMain(){
       <div class="progress-track"><div class="progress-fill" style="width:${total? Math.round(bought/total*100):0}%"></div></div>
       <div class="progress-label">${bought} de ${total} ${total===1?'item':'itens'}</div>
     </div>
+    ${isFull ? `<div class="total-row">Total estimado: <strong>${formatPrice(totalEstimate)}</strong></div>` : ''}
+    ${isFull ? `<div class="search-row"><input type="text" id="searchInput" placeholder="Buscar item na lista..." aria-label="Buscar item na lista"></div>` : ''}
+    ${isFull ? `<div class="cat-chip-row" id="favChipRow"></div>` : ''}
     <div id="categoriesArea"></div>
     <div class="add-item-form" id="addItemForm">
-      <input type="text" class="f-name" id="newItemName" placeholder="Item (ex: Tomate)">
-      <input type="text" class="f-qty" id="newItemQty" placeholder="1">
-      <select class="f-cat" id="newItemCat"></select>
+      <input type="text" class="f-name" id="newItemName" placeholder="Item (ex: Tomate)" aria-label="Nome do item"${isFull ? ' list="itemNamesDatalist"' : ''}>
+      <input type="text" class="f-qty" id="newItemQty" placeholder="1" aria-label="Quantidade">
+      ${isFull ? `<select class="f-unit" id="newItemUnit" aria-label="Unidade">${DEFAULT_UNITS.map(u=>`<option value="${u}">${u===''?'Un.':escapeHtml(u)}</option>`).join('')}</select>` : ''}
+      <select class="f-cat" id="newItemCat" aria-label="Categoria"></select>
+      ${isFull ? `<input type="text" class="f-price" id="newItemPrice" placeholder="R$" aria-label="Preço estimado">` : ''}
       <button type="button" id="addItemBtn">Add</button>
     </div>
+    ${isFull ? `<datalist id="itemNamesDatalist"></datalist>` : ''}
   `;
   main.appendChild(receipt);
 
@@ -611,6 +734,49 @@ function renderMain(){
   const optOther = document.createElement('option');
   optOther.value = '__nova__'; optOther.textContent = '+ nova categoria';
   catSelect.appendChild(optOther);
+
+  // recursos extras da versão completa: datalist de nomes + favoritos
+  if(isFull){
+    const datalist = receipt.querySelector('#itemNamesDatalist');
+    Object.values(state.itemHistory || {}).forEach(h=>{
+      const opt = document.createElement('option');
+      opt.value = h.name;
+      datalist.appendChild(opt);
+    });
+
+    const favRow = receipt.querySelector('#favChipRow');
+    const favs = Object.values(state.itemHistory || {}).sort((a,b)=> (b.count||0) - (a.count||0)).slice(0,8);
+    favs.forEach(f=>{
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'cat-chip';
+      chip.textContent = '+ ' + f.name;
+      chip.title = 'Adicionar rapidamente';
+      chip.onclick = ()=> quickAddFromHistory(list, f);
+      favRow.appendChild(chip);
+    });
+
+    const searchInput = receipt.querySelector('#searchInput');
+    searchInput.value = currentSearch;
+    searchInput.addEventListener('input', (e)=>{
+      currentSearch = e.target.value;
+      applySearchFilter(currentSearch);
+    });
+
+    receipt.querySelector('#newItemName').addEventListener('input', (e)=>{
+      const key = e.target.value.trim().toLowerCase();
+      const hist = state.itemHistory && state.itemHistory[key];
+      if(!hist) return;
+      const unitSel = document.getElementById('newItemUnit');
+      const priceInp = document.getElementById('newItemPrice');
+      if(unitSel && !unitSel.value) unitSel.value = hist.unit || '';
+      if(catSelect && !catSelect.value && hist.category){
+        const opt = Array.from(catSelect.options).find(o=>o.value===hist.category);
+        if(opt) catSelect.value = hist.category;
+      }
+      if(priceInp && !priceInp.value && hist.price != null) priceInp.value = hist.price;
+    });
+  }
 
   // render items grouped by category, pending first then bought within group; bought items pushed to bottom overall via sort
   const catArea = receipt.querySelector('#categoriesArea');
@@ -636,11 +802,13 @@ function renderMain(){
       const catLabel = cat === '' ? 'Sem categoria' : cat;
       block.innerHTML = `<p class="category-title">${escapeHtml(catLabel)}</p>`;
       grouped[cat].forEach(item=>{
-        block.appendChild(renderItemRow(item, list));
+        block.appendChild(renderItemRow(item, list, isFull));
       });
       catArea.appendChild(block);
     });
   }
+
+  if(isFull && currentSearch) applySearchFilter(currentSearch);
 
   // add item handlers
   receipt.querySelector('#addItemBtn').onclick = ()=> handleAddItem(list, catSelect);
@@ -667,7 +835,9 @@ function renderMain(){
   actions.innerHTML = `
     <button id="mapBtn">📍 Ver no mapa</button>
     <button id="pdfBtn">🧾 Gerar PDF</button>
+    ${isFull ? `<button id="shareBtn">🔗 Compartilhar</button>` : ''}
     <button id="recurBtn">${list.recurring.enabled ? '🔁 Recorrência: ativa' : '🔁 Recorrência'}</button>
+    ${isFull ? `<button id="editListBtn">✎ Editar lista</button>` : ''}
     <button class="primary" id="finishBtn">✓ Finalizar compra</button>
   `;
   main.appendChild(actions);
@@ -676,6 +846,10 @@ function renderMain(){
   actions.querySelector('#pdfBtn').onclick = ()=> generatePdf(list);
   actions.querySelector('#recurBtn').onclick = ()=> openRecurringSettingsModal(list);
   actions.querySelector('#finishBtn').onclick = ()=> openFinishModal(list);
+  if(isFull){
+    actions.querySelector('#shareBtn').onclick = ()=> shareListAsText(list);
+    actions.querySelector('#editListBtn').onclick = ()=> openEditListModal(list);
+  }
 
   document.getElementById('fabAdd').onclick = ()=>{
     receipt.querySelector('#newItemName').focus();
@@ -683,9 +857,28 @@ function renderMain(){
   };
 }
 
-function renderItemRow(item, list){
+function applySearchFilter(query){
+  const q = (query || '').trim().toLowerCase();
+  document.querySelectorAll('.category-block').forEach(block=>{
+    let anyVisible = false;
+    block.querySelectorAll('.item-row').forEach(row=>{
+      const match = !q || (row.dataset.name || '').includes(q);
+      row.style.display = match ? '' : 'none';
+      if(match) anyVisible = true;
+    });
+    block.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+function renderItemRow(item, list, isFull){
   const row = document.createElement('div');
   row.className = 'item-row' + (item.bought ? ' bought' : '');
+  row.dataset.name = item.name.toLowerCase();
+  row.dataset.id = item.id;
+  row.dataset.category = item.category || '';
+  row.dataset.bought = String(!!item.bought);
+  const qtyDisplay = item.unit ? `${escapeHtml(String(item.qty))} ${escapeHtml(item.unit)}` : escapeHtml(String(item.qty));
+  const showPrice = isFull && item.price != null && item.price !== '' && !isNaN(item.price);
   row.innerHTML = `
     <button class="check" aria-label="Marcar como comprado">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"/></svg>
@@ -694,8 +887,13 @@ function renderItemRow(item, list){
       <div class="item-name-row">
         <span class="item-name">${escapeHtml(item.name)}</span>
       </div>
+      ${showPrice ? `<div class="item-price">${formatPrice(item.price)}</div>` : ''}
     </div>
-    <span class="item-qty">${escapeHtml(String(item.qty))}</span>
+    <span class="item-qty">${qtyDisplay}</span>
+    ${isFull ? `
+      <span class="drag-handle" aria-hidden="true" title="Arraste para reordenar">⠿</span>
+      <button class="item-edit" aria-label="Editar item">✎</button>
+    ` : ''}
     <button class="item-del" aria-label="Remover item">&times;</button>
   `;
   row.querySelector('.check').onclick = ()=>{
@@ -703,23 +901,110 @@ function renderItemRow(item, list){
     saveData(); render();
   };
   row.querySelector('.item-del').onclick = ()=>{
-    list.items = list.items.filter(i=>i.id !== item.id);
-    saveData(); render();
+    const doDelete = ()=>{ list.items = list.items.filter(i=>i.id !== item.id); saveData(); render(); };
+    if(isFull){
+      openConfirmModal('Remover item', `Remover "${item.name}" da lista?`, 'Remover', doDelete, true);
+    } else {
+      doDelete();
+    }
   };
+  if(isFull){
+    row.querySelector('.item-edit').onclick = ()=> openEditItemModal(item, list);
+    row.querySelector('.drag-handle').addEventListener('pointerdown', (e)=> startItemDrag(e, row, list));
+  }
   return row;
+}
+
+/* =================== ARRASTAR PARA REORDENAR =================== */
+function startItemDrag(e, row, list){
+  e.preventDefault();
+  const category = row.dataset.category;
+  const bought = row.dataset.bought;
+  row.classList.add('dragging');
+  document.body.classList.add('dragging-active');
+
+  function onMove(ev){
+    const pointX = ev.clientX, pointY = ev.clientY;
+    row.style.pointerEvents = 'none';
+    const elAtPoint = document.elementFromPoint(pointX, pointY);
+    row.style.pointerEvents = '';
+    const targetRow = elAtPoint ? elAtPoint.closest('.item-row') : null;
+    if(!targetRow || targetRow === row) return;
+    if(targetRow.dataset.category !== category || targetRow.dataset.bought !== bought) return;
+    const rect = targetRow.getBoundingClientRect();
+    const before = (pointY - rect.top) < rect.height / 2;
+    targetRow.parentNode.insertBefore(row, before ? targetRow : targetRow.nextSibling);
+  }
+
+  function onUp(){
+    row.classList.remove('dragging');
+    document.body.classList.remove('dragging-active');
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    commitItemOrder(list);
+  }
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+function commitItemOrder(list){
+  const orderedIds = Array.from(document.querySelectorAll('#categoriesArea .item-row')).map(r=>r.dataset.id);
+  const byId = {};
+  list.items.forEach(i=> byId[i.id] = i);
+  const reordered = orderedIds.map(id=>byId[id]).filter(Boolean);
+  // segurança: inclui qualquer item que não tenha sido encontrado no DOM (ex.: filtrado pela busca)
+  list.items.forEach(i=>{ if(!reordered.includes(i)) reordered.push(i); });
+  list.items = reordered;
+  saveData();
+  render();
+}
+
+function updateItemHistory(item){
+  if(!state.itemHistory) state.itemHistory = {};
+  const key = (item.name || '').trim().toLowerCase();
+  if(!key) return;
+  const existing = state.itemHistory[key] || { count: 0 };
+  state.itemHistory[key] = {
+    name: item.name.trim(),
+    category: item.category,
+    unit: item.unit || '',
+    price: (item.price !== undefined && item.price !== null && item.price !== '' && !isNaN(item.price)) ? item.price : (existing.price != null ? existing.price : null),
+    count: (existing.count || 0) + 1,
+    lastUsed: Date.now()
+  };
+}
+
+function quickAddFromHistory(list, fav){
+  const item = { id: uid(), name: fav.name, qty: '1', unit: fav.unit || '', category: fav.category || '', price: (fav.price != null ? fav.price : null), bought:false };
+  list.items.push(item);
+  updateItemHistory(item);
+  saveData(); render();
+  showToast(fav.name + ' adicionado');
 }
 
 function handleAddItem(list, catSelect){
   const nameInput = document.getElementById('newItemName');
   const qtyInput = document.getElementById('newItemQty');
+  const unitSelect = document.getElementById('newItemUnit');
+  const priceInput = document.getElementById('newItemPrice');
   const name = nameInput.value.trim();
   if(!name){ nameInput.focus(); return; }
   const qty = qtyInput.value.trim() || '1';
   const category = catSelect.value === '__nova__' ? '' : catSelect.value;
-  list.items.push({ id: uid(), name, qty, category, bought:false });
+  const unit = unitSelect ? unitSelect.value : '';
+  const priceRaw = priceInput ? priceInput.value.trim() : '';
+  const price = priceRaw ? parseFloat(priceRaw.replace(',', '.')) : null;
+  const item = { id: uid(), name, qty, unit, category, price: (price != null && !isNaN(price)) ? price : null, bought:false };
+  list.items.push(item);
+  updateItemHistory(item);
   saveData();
   nameInput.value = '';
   qtyInput.value = '';
+  if(unitSelect) unitSelect.value = '';
+  if(priceInput) priceInput.value = '';
   render();
   setTimeout(()=>{
     const el = document.getElementById('newItemName');
@@ -777,7 +1062,7 @@ function openNewListModal(prefillItems){
     const recurring = overlay.querySelector('#nlRecurring').checked;
     const list = createListObject(name, recurring, freq);
     if(prefillItems && prefillItems.length){
-      list.items = prefillItems.map(i=> ({ id: uid(), name:i.name, qty:i.qty, category:i.category, bought:false }));
+      list.items = prefillItems.map(i=> ({ id: uid(), name:i.name, qty:i.qty, unit:i.unit||'', category:i.category, price: (i.price!=null?i.price:null), bought:false }));
     }
     state.lists.push(list);
     state.activeListId = list.id;
@@ -791,6 +1076,121 @@ function openNewListModal(prefillItems){
 document.getElementById('newListBtn').onclick = ()=> openNewListModal();
 document.getElementById('historyBtn').onclick = ()=> openFinishedModal();
 document.getElementById('syncBtn').onclick = ()=> openSyncModal();
+document.querySelectorAll('#modeSwitch .mode-btn').forEach(btn=>{
+  btn.onclick = ()=>{
+    currentSearch = '';
+    state.appMode = btn.dataset.mode;
+    saveData();
+    render();
+  };
+});
+document.getElementById('themeToggleBtn').onclick = ()=>{
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  saveData();
+  render();
+};
+
+/* =================== CONFIRMAÇÃO GENÉRICA =================== */
+function openConfirmModal(title, message, confirmLabel, onConfirm, danger){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>${escapeHtml(title)}</h2>
+      <p class="sub">${escapeHtml(message)}</p>
+      <div class="modal-buttons">
+        <button id="cmCancel">Cancelar</button>
+        <button class="${danger ? 'danger' : 'primary'}" id="cmConfirm">${escapeHtml(confirmLabel)}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#cmCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#cmConfirm').onclick = ()=>{ overlay.remove(); onConfirm(); };
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+}
+
+/* =================== EDITAR ITEM =================== */
+function openEditItemModal(item, list){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Editar item</h2>
+      <div class="field"><label>Nome</label><input type="text" id="eiName" value="${escapeHtml(item.name)}"></div>
+      <div class="field"><label>Quantidade</label><input type="text" id="eiQty" value="${escapeHtml(String(item.qty))}"></div>
+      <div class="field"><label>Unidade</label>
+        <select id="eiUnit">
+          ${DEFAULT_UNITS.map(u=>`<option value="${u}" ${item.unit===u?'selected':''}>${u===''?'Sem unidade':escapeHtml(u)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Categoria</label><input type="text" id="eiCategory" value="${escapeHtml(item.category||'')}" placeholder="Deixe em branco para Sem categoria"></div>
+      <div class="field"><label>Preço estimado (R$)</label><input type="text" id="eiPrice" value="${item.price!=null?String(item.price):''}" placeholder="Ex: 5.90"></div>
+      <div class="modal-buttons">
+        <button id="eiCancel">Cancelar</button>
+        <button class="primary" id="eiSave">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#eiCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#eiSave').onclick = ()=>{
+    const name = overlay.querySelector('#eiName').value.trim();
+    if(!name){ overlay.querySelector('#eiName').focus(); return; }
+    item.name = name;
+    item.qty = overlay.querySelector('#eiQty').value.trim() || '1';
+    item.unit = overlay.querySelector('#eiUnit').value;
+    item.category = overlay.querySelector('#eiCategory').value.trim();
+    const priceRaw = overlay.querySelector('#eiPrice').value.trim();
+    const price = priceRaw ? parseFloat(priceRaw.replace(',', '.')) : null;
+    item.price = (price != null && !isNaN(price)) ? price : null;
+    updateItemHistory(item);
+    saveData();
+    overlay.remove();
+    render();
+    showToast('Item atualizado');
+  };
+  overlay.querySelector('#eiName').focus();
+}
+
+/* =================== EDITAR / EXCLUIR LISTA =================== */
+function openEditListModal(list){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Editar lista</h2>
+      <div class="field"><label>Nome da lista</label><input type="text" id="elName" value="${escapeHtml(list.name)}"></div>
+      <div class="modal-buttons">
+        <button id="elCancel">Cancelar</button>
+        <button class="primary" id="elSave">Salvar</button>
+      </div>
+      <button type="button" class="text-danger-link" id="elDelete">Excluir esta lista</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#elCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#elSave').onclick = ()=>{
+    const name = overlay.querySelector('#elName').value.trim();
+    if(!name){ overlay.querySelector('#elName').focus(); return; }
+    list.name = name;
+    list.baseName = name;
+    saveData();
+    overlay.remove();
+    render();
+    showToast('Lista atualizada');
+  };
+  overlay.querySelector('#elDelete').onclick = ()=>{
+    overlay.remove();
+    openConfirmModal('Excluir lista', `Tem certeza que deseja excluir "${list.name}"? Essa ação não pode ser desfeita.`, 'Excluir', ()=>{
+      state.lists = state.lists.filter(l=>l.id !== list.id);
+      if(state.activeListId === list.id){
+        state.activeListId = state.lists.length ? state.lists[0].id : null;
+      }
+      saveData();
+      render();
+      showToast('Lista excluída');
+    }, true);
+  };
+  overlay.querySelector('#elName').focus();
+}
 
 /* =================== RECORRÊNCIA DE LISTA EXISTENTE =================== */
 function openRecurringSettingsModal(list){
@@ -868,7 +1268,7 @@ function nextRecurrenceName(list){
 function autoRenewRecurringList(list){
   const { base, label } = nextRecurrenceName(list);
   const newList = createListObject(label, true, list.recurring.frequencyDays, base);
-  newList.items = list.items.map(it=> ({ id: uid(), name: it.name, qty: it.qty, category: it.category, bought:false }));
+  newList.items = list.items.map(it=> ({ id: uid(), name: it.name, qty: it.qty, unit: it.unit||'', category: it.category, price: (it.price!=null?it.price:null), bought:false }));
   newList.location = list.location || null;
   return newList;
 }
@@ -880,7 +1280,7 @@ function reactivateFinishedList(id, mode){
   const sourceItems = mode === 'pending' ? snapshot.items.filter(i=>!i.bought) : snapshot.items;
   const newList = createListObject(snapshot.name, snapshot.recurring.enabled, snapshot.recurring.frequencyDays, snapshot.baseName);
   newList.location = snapshot.location || null;
-  newList.items = sourceItems.map(it=> ({ id: uid(), name: it.name, qty: it.qty, category: it.category, bought: false }));
+  newList.items = sourceItems.map(it=> ({ id: uid(), name: it.name, qty: it.qty, unit: it.unit||'', category: it.category, price: (it.price!=null?it.price:null), bought: false }));
   state.lists.push(newList);
   state.activeListId = newList.id;
   saveData();
@@ -890,6 +1290,7 @@ function reactivateFinishedList(id, mode){
 
 /* =================== COMPRAS FINALIZADAS =================== */
 function openFinishedModal(){
+  const isFull = isFullMode();
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   const finished = state.finishedLists || [];
@@ -908,7 +1309,10 @@ function openFinishedModal(){
       return `
         <div class="carry-item">
           <div class="ci-name">${escapeHtml(l.name)}<small>finalizada em ${date} · ${bought}/${total} itens comprados</small></div>
-          <button class="carry-toggle keep" data-id="${l.id}">Visualizar</button>
+          <div style="display:flex; gap:6px;">
+            <button class="carry-toggle keep" data-id="${l.id}">Visualizar</button>
+            ${isFull ? `<button class="carry-toggle remove" data-delid="${l.id}">Excluir</button>` : ''}
+          </div>
         </div>`;
     }).join('');
   }
@@ -918,6 +1322,7 @@ function openFinishedModal(){
       <p class="sub">Histórico de compras já finalizadas. Visualize uma para ver os itens e, se quiser, reativá-la.</p>
       <div id="finishedArea">${bodyHtml}</div>
       <div class="modal-buttons">
+        ${isFull && finished.length > 0 ? `<button id="fhClearAll" class="danger">Limpar histórico</button>` : ''}
         <button id="fhClose">Fechar</button>
       </div>
     </div>
@@ -931,6 +1336,30 @@ function openFinishedModal(){
       openFinishedDetailModal(id);
     };
   });
+  overlay.querySelectorAll('[data-delid]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.dataset.delid;
+      openConfirmModal('Excluir do histórico', 'Esta compra finalizada será removida permanentemente do histórico.', 'Excluir', ()=>{
+        state.finishedLists = state.finishedLists.filter(l=>l.id !== id);
+        saveData();
+        overlay.remove();
+        openFinishedModal();
+      }, true);
+    };
+  });
+  if(isFull && finished.length > 0){
+    const clearBtn = overlay.querySelector('#fhClearAll');
+    if(clearBtn){
+      clearBtn.onclick = ()=>{
+        openConfirmModal('Limpar histórico', 'Todas as compras finalizadas serão removidas permanentemente.', 'Limpar tudo', ()=>{
+          state.finishedLists = [];
+          saveData();
+          overlay.remove();
+          showToast('Histórico limpo');
+        }, true);
+      };
+    }
+  }
   overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
 }
 
@@ -988,13 +1417,14 @@ function openFinishedDetailModal(id, mode){
   catsSorted.forEach(cat=>{
     itemsHtml += `<p class="category-title" style="margin-top:14px;">${escapeHtml(cat === '' ? 'Sem categoria' : cat)}</p>`;
     grouped[cat].forEach(it=>{
+      const qtyDisplay = it.unit ? `${escapeHtml(String(it.qty))} ${escapeHtml(it.unit)}` : escapeHtml(String(it.qty));
       itemsHtml += `
         <div class="item-row${it.bought ? ' bought' : ''}">
           <span class="check" style="pointer-events:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"/></svg>
           </span>
           <div class="item-main"><span class="item-name">${escapeHtml(it.name)}</span></div>
-          <span class="item-qty">${escapeHtml(String(it.qty))}</span>
+          <span class="item-qty">${qtyDisplay}</span>
         </div>`;
     });
   });
@@ -1092,7 +1522,7 @@ function openFinishModal(list){
 
   overlay.querySelector('#fCancel').onclick = ()=> overlay.remove();
   overlay.querySelector('#fCreate').onclick = ()=>{
-    const toCarry = pending.filter(i=> keepState[i.id]).map(i=>({name:i.name, qty:i.qty, category:i.category}));
+    const toCarry = pending.filter(i=> keepState[i.id]).map(i=>({name:i.name, qty:i.qty, unit:i.unit||'', category:i.category, price:(i.price!=null?i.price:null)}));
     archiveList(list);
     saveData();
     overlay.remove();
@@ -1130,6 +1560,61 @@ function openRecurringFinishModal(list){
     render();
     showToast('Nova lista criada: ' + newList.name);
   };
+}
+
+/* =================== COMPARTILHAR COMO TEXTO =================== */
+function buildShareText(list){
+  const lines = [];
+  lines.push(list.name.toUpperCase());
+  lines.push(new Date(list.createdAt).toLocaleDateString('pt-BR'));
+  lines.push('');
+  const grouped = {};
+  list.items.forEach(it=>{
+    if(!grouped[it.category]) grouped[it.category] = [];
+    grouped[it.category].push(it);
+  });
+  Object.keys(grouped).sort((a,b)=>{
+    if(a === '') return -1;
+    if(b === '') return 1;
+    return a.localeCompare(b, 'pt-BR');
+  }).forEach(cat=>{
+    lines.push(`— ${cat === '' ? 'Sem categoria' : cat} —`);
+    grouped[cat].forEach(it=>{
+      const mark = it.bought ? '[x]' : '[ ]';
+      const qtyPart = it.unit ? `${it.qty}${it.unit}` : `${it.qty}x`;
+      lines.push(`${mark} ${qtyPart} ${it.name}`);
+    });
+    lines.push('');
+  });
+  return lines.join('\n').trim();
+}
+
+async function shareListAsText(list){
+  const text = buildShareText(list);
+  if(navigator.share){
+    try{
+      await navigator.share({ title: list.name, text });
+      return;
+    }catch(e){ /* usuário cancelou ou falhou; segue para cópia */ }
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast('Lista copiada para a área de transferência');
+  }catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try{
+      document.execCommand('copy');
+      showToast('Lista copiada para a área de transferência');
+    }catch(err){
+      showToast('Não foi possível copiar automaticamente');
+    }
+    ta.remove();
+  }
 }
 
 /* =================== MAPA =================== */
@@ -1245,7 +1730,8 @@ function generatePdf(list){
     doc.setFont('courier','normal');
     grouped[cat].forEach(item=>{
       const mark = item.bought ? '[x]' : '[ ]';
-      const line = `${mark} ${item.qty}x  ${item.name}`;
+      const qtyPart = item.unit ? `${item.qty}${item.unit}` : `${item.qty}x`;
+      const line = `${mark} ${qtyPart}  ${item.name}`;
       doc.text(line.length > 44 ? line.slice(0,44) : line, 26, y);
       y += 14;
       if(y > 560){ doc.addPage([300,600]); y = 36; }
@@ -1268,6 +1754,11 @@ function generatePdf(list){
 /* =================== UTIL =================== */
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function formatPrice(v){
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  if(isNaN(n)) return 'R$ 0,00';
+  return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 let toastTimer;
 function showToast(msg){
