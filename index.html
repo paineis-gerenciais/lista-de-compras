@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Lista de Compras</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#3F6B4A">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Compras">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F4EFE3;
+    --card:#FFFDF8;
+    --ink:#2B2B26;
+    --ink-light:#84796A;
+    --green:#3F6B4A;
+    --green-light:#E6EEE3;
+    --amber:#C97A3D;
+    --amber-light:#F7E9DA;
+    --red:#B5482F;
+    --border:#DCD2BD;
+    --shadow:rgba(43,38,26,0.14);
+    --radius:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,38,26,0.05) 1px, transparent 0) 0 0/14px 14px,
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:96px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+
+  /* ---------- Header ---------- */
+  header.app-header{
+    position:sticky; top:0; z-index:30;
+    background:var(--paper);
+    border-bottom:1px solid var(--border);
+    padding:14px 16px 10px;
+  }
+  .brand{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  }
+  .brand h1{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:0.5px;
+    margin:0;
+    display:flex; align-items:center; gap:8px;
+  }
+  .brand h1 .dot{color:var(--green); font-size:22px; line-height:0;}
+  .icon-btn{
+    background:none; border:1px solid var(--border); border-radius:999px;
+    width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--ink); flex-shrink:0;
+  }
+  .icon-btn:active{background:var(--green-light); border-color:var(--green);}
+
+  .tabs-row{
+    display:flex; gap:8px; overflow-x:auto; margin-top:12px; padding-bottom:4px;
+    scrollbar-width:none;
+  }
+  .tabs-row::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    padding:7px 12px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:var(--card);
+    color:var(--ink-light);
+    white-space:nowrap;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab.active{
+    background:var(--ink); color:var(--card); border-color:var(--ink);
+  }
+  .tab .rec-mark{font-size:11px;}
+  .tab.add-tab{
+    color:var(--green); border-color:var(--green); border-style:dashed;
+    background:transparent;
+  }
+
+  main{max-width:560px; margin:0 auto; padding:18px 14px 0;}
+
+  /* ---------- Empty state ---------- */
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-light);
+  }
+  .empty-state .big{font-size:40px; margin-bottom:10px;}
+  .empty-state h2{font-family:'Space Mono',monospace; font-size:16px; color:var(--ink); margin:0 0 6px;}
+  .empty-state p{font-size:14px; line-height:1.5; margin:0 0 18px;}
+
+  /* ---------- Receipt card ---------- */
+  .receipt{
+    background:var(--card);
+    box-shadow:0 10px 24px -8px var(--shadow);
+    transform:rotate(-0.25deg);
+    position:relative;
+    padding:22px 18px 4px;
+    clip-path: polygon(
+      0% 8px, 2% 0%, 4% 8px, 6% 0%, 8% 8px, 10% 0%, 12% 8px, 14% 0%, 16% 8px, 18% 0%, 20% 8px, 22% 0%, 24% 8px, 26% 0%, 28% 8px, 30% 0%, 32% 8px, 34% 0%, 36% 8px, 38% 0%, 40% 8px, 42% 0%, 44% 8px, 46% 0%, 48% 8px, 50% 0%, 52% 8px, 54% 0%, 56% 8px, 58% 0%, 60% 8px, 62% 0%, 64% 8px, 66% 0%, 68% 8px, 70% 0%, 72% 8px, 74% 0%, 76% 8px, 78% 0%, 80% 8px, 82% 0%, 84% 8px, 86% 0%, 88% 8px, 90% 0%, 92% 8px, 94% 0%, 96% 8px, 98% 0%, 100% 8px,
+      100% 100%,
+      98% calc(100% - 8px), 96% 100%, 94% calc(100% - 8px), 92% 100%, 90% calc(100% - 8px), 88% 100%, 86% calc(100% - 8px), 84% 100%, 82% calc(100% - 8px), 80% 100%, 78% calc(100% - 8px), 76% 100%, 74% calc(100% - 8px), 72% 100%, 70% calc(100% - 8px), 68% 100%, 66% calc(100% - 8px), 64% 100%, 62% calc(100% - 8px), 60% 100%, 58% calc(100% - 8px), 56% 100%, 54% calc(100% - 8px), 52% 100%, 50% calc(100% - 8px), 48% 100%, 46% calc(100% - 8px), 44% 100%, 42% calc(100% - 8px), 40% 100%, 38% calc(100% - 8px), 36% 100%, 34% calc(100% - 8px), 32% 100%, 30% calc(100% - 8px), 28% 100%, 26% calc(100% - 8px), 24% 100%, 22% calc(100% - 8px), 20% 100%, 18% calc(100% - 8px), 16% 100%, 14% calc(100% - 8px), 12% 100%, 10% calc(100% - 8px), 8% 100%, 6% calc(100% - 8px), 4% 100%, 2% calc(100% - 8px), 0% 100%
+    );
+    margin-bottom:18px;
+  }
+  .receipt-head{
+    text-align:center; padding-bottom:14px; border-bottom:1px dashed var(--border);
+    margin-bottom:6px;
+  }
+  .receipt-head .list-name{
+    font-family:'Space Mono',monospace; font-weight:700; font-size:18px;
+    text-transform:uppercase; letter-spacing:1px; margin:0 0 4px;
+    word-break:break-word;
+  }
+  .receipt-head .list-meta{
+    font-size:11px; color:var(--ink-light); display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
+  }
+  .receipt-head .list-meta .rec-badge{color:var(--green); font-weight:600;}
+
+  .progress-row{
+    display:flex; align-items:center; gap:10px; padding:12px 0 10px; border-bottom:1px dashed var(--border);
+  }
+  .progress-track{
+    flex:1; height:6px; background:var(--border); border-radius:99px; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background:var(--green); border-radius:99px; transition:width .25s ease;
+  }
+  .progress-label{
+    font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-light); white-space:nowrap;
+  }
+
+  .category-block{padding-top:12px;}
+  .category-title{
+    font-family:'Space Mono',monospace; font-size:11px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--ink-light); margin:0 0 6px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .category-title::after{
+    content:''; flex:1; border-bottom:1px dotted var(--border); transform:translateY(-3px);
+  }
+
+  .item-row{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:8px 0;
+    border-bottom:1px dotted var(--border);
+  }
+  .item-row:last-child{border-bottom:none;}
+  .check{
+    width:22px; height:22px; flex-shrink:0; border:1.5px solid var(--ink-light);
+    border-radius:5px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; margin-top:1px; background:var(--card);
+  }
+  .check svg{width:14px; height:14px; opacity:0; transition:opacity .12s;}
+  .item-row.bought .check{background:var(--green); border-color:var(--green);}
+  .item-row.bought .check svg{opacity:1; stroke:#fff;}
+  .item-main{flex:1; min-width:0;}
+  .item-name-row{display:flex; gap:6px; align-items:baseline; flex-wrap:wrap;}
+  .item-name{font-size:14.5px; font-weight:500; word-break:break-word;}
+  .item-row.bought .item-name{text-decoration:line-through; color:var(--ink-light); font-weight:400;}
+  .item-qty{
+    font-family:'Space Mono',monospace; font-size:12px; color:var(--ink-light); flex-shrink:0;
+  }
+  .item-del{
+    background:none; border:none; color:var(--ink-light); cursor:pointer; padding:4px;
+    flex-shrink:0; font-size:16px; line-height:1; margin-top:1px;
+  }
+  .item-del:active{color:var(--red);}
+
+  .add-item-form{
+    display:flex; flex-wrap:wrap; gap:8px; padding:14px 0 16px; border-top:1px dashed var(--border); margin-top:8px;
+  }
+  .add-item-form input, .add-item-form select{
+    font-family:'Inter',sans-serif; font-size:14px; padding:9px 10px;
+    border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink);
+  }
+  .add-item-form .f-name{flex:1 1 140px; min-width:120px;}
+  .add-item-form .f-qty{width:64px;}
+  .add-item-form .f-cat{flex:1 1 110px; min-width:100px;}
+  .add-item-form button{
+    font-family:'Space Mono',monospace; font-weight:700; font-size:13px;
+    background:var(--green); color:#fff; border:none; border-radius:6px;
+    padding:9px 14px; cursor:pointer; flex-shrink:0;
+  }
+  .add-item-form button:active{background:#335a3e;}
+
+  .list-actions{
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px;
+  }
+  .list-actions button{
+    flex:1 1 auto;
+    font-family:'Space Mono',monospace; font-size:12.5px; font-weight:700;
+    padding:11px 10px; border-radius:6px; cursor:pointer;
+    border:1px solid var(--border); background:var(--card); color:var(--ink);
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .list-actions button.primary{background:var(--ink); color:var(--card); border-color:var(--ink);}
+  .list-actions button:active{transform:translateY(1px);}
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed; right:18px; bottom:18px; z-index:40;
+    width:54px; height:54px; border-radius:50%;
+    background:var(--green); color:#fff; border:none;
+    box-shadow:0 8px 18px -4px rgba(63,107,74,0.55);
+    font-size:26px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .fab:active{transform:scale(0.94);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(43,38,26,0.45); z-index:50;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  @media (min-width:560px){ .modal-overlay{align-items:center;} }
+  .modal{
+    background:var(--paper); width:100%; max-width:480px;
+    border-radius:16px 16px 0 0; padding:20px 18px 24px; max-height:88vh; overflow-y:auto;
+    box-shadow:0 -10px 30px rgba(0,0,0,0.2);
+  }
+  @media (min-width:560px){ .modal{border-radius:14px; margin:20px;} }
+  .modal h2{
+    font-family:'Space Mono',monospace; font-size:16px; margin:0 0 4px; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .modal p.sub{font-size:13px; color:var(--ink-light); margin:0 0 16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; font-weight:600; color:var(--ink-light); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px;}
+  .field input[type=text], .field input[type=number]{
+    width:100%; font-family:'Inter',sans-serif; font-size:15px; padding:10px 12px;
+    border:1px solid var(--border); border-radius:8px; background:#fff;
+  }
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0;}
+  .toggle-row label{font-size:14px; font-weight:500; margin:0;}
+  .switch{position:relative; width:42px; height:24px; flex-shrink:0;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; inset:0; background:var(--border); border-radius:99px; cursor:pointer; transition:.15s;}
+  .slider::before{content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s;}
+  .switch input:checked + .slider{background:var(--green);}
+  .switch input:checked + .slider::before{transform:translateX(18px);}
+  .seg{display:flex; gap:6px; flex-wrap:wrap;}
+  .seg button{
+    font-family:'Space Mono',monospace; font-size:12px; padding:7px 11px; border-radius:99px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; color:var(--ink-light);
+  }
+  .seg button.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .modal-buttons{display:flex; gap:10px; margin-top:18px;}
+  .modal-buttons button{
+    flex:1; font-family:'Space Mono',monospace; font-weight:700; font-size:13px;
+    padding:12px; border-radius:8px; cursor:pointer; border:1px solid var(--border);
+    background:#fff; color:var(--ink);
+  }
+  .modal-buttons button.primary{background:var(--green); color:#fff; border-color:var(--green);}
+  .modal-buttons button.danger{background:#fff; color:var(--red); border-color:var(--red);}
+
+  .carry-item{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dotted var(--border);
+  }
+  .carry-item:last-child{border-bottom:none;}
+  .carry-item .ci-name{flex:1; font-size:14px;}
+  .carry-item .ci-name small{display:block; color:var(--ink-light); font-size:11px; font-family:'Space Mono',monospace;}
+  .carry-toggle{
+    font-family:'Space Mono',monospace; font-size:11px; padding:6px 10px; border-radius:6px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; color:var(--ink-light);
+  }
+  .carry-toggle.keep{color:var(--green); border-color:var(--green); background:var(--green-light);}
+  .carry-toggle.remove{color:var(--red); border-color:var(--red); background:#FBEAE5;}
+
+  .map-options{display:flex; flex-direction:column; gap:10px;}
+  .map-option-btn{
+    display:flex; align-items:center; gap:12px; padding:13px; border-radius:10px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; text-align:left;
+  }
+  .map-option-btn .moi{font-size:20px;}
+  .map-option-btn .mot strong{display:block; font-size:14px;}
+  .map-option-btn .mot span{font-size:12px; color:var(--ink-light);}
+
+  .toast{
+    position:fixed; bottom:88px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--card); font-size:13px; padding:10px 16px;
+    border-radius:999px; z-index:60; opacity:0; transition:opacity .2s, transform .2s;
+    pointer-events:none; white-space:nowrap; font-family:'Space Mono',monospace;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+
+  .cat-chip-row{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .cat-chip{
+    font-family:'Space Mono',monospace; font-size:11px; padding:5px 9px; border-radius:99px;
+    border:1px solid var(--border); background:#fff; cursor:pointer; color:var(--ink-light);
+  }
+  .cat-chip.active{background:var(--amber); color:#fff; border-color:var(--amber);}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <h1><span class="dot">&#9679;</span>Lista de Compras</h1>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="syncBtn" title="Sincronização" aria-label="Sincronização">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/></svg>
+      </button>
+      <button class="icon-btn" id="historyBtn" title="Compras finalizadas" aria-label="Compras finalizadas">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 4v4h4"/><path d="M12 7v5l3 3"/></svg>
+      </button>
+      <button class="icon-btn" id="newListBtn" title="Nova lista" aria-label="Nova lista">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="tabs-row" id="tabsRow"></div>
+</header>
+
+<main id="mainArea"></main>
+
+<button class="fab" id="fabAdd" title="Adicionar item" aria-label="Adicionar item">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================== STORAGE (local) =================== */
+const STORAGE_KEY = 'shopping-app-data';
+const SYNC_CONFIG_KEY = 'shopping-app-sync-config';
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY);
+    if(res && res.value) return JSON.parse(res.value);
+  }catch(e){ /* not found yet */ }
+  return { lists: [], activeListId: null };
+}
+async function saveDataLocal(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('Erro ao salvar', e); showToast('Não foi possível salvar agora'); }
+}
+async function saveData(){
+  state.updatedAt = Date.now();
+  await saveDataLocal();
+  scheduleCloudSync();
+}
+
+let state = { lists: [], activeListId: null, finishedLists: [], updatedAt: 0 };
+
+/* =================== SINCRONIZAÇÃO (Apps Script + Sheets) =================== */
+let syncConfig = { url: '', token: '', enabled: false };
+let syncStatus = 'off'; // off | syncing | synced | error | offline
+
+async function loadSyncConfig(){
+  try{
+    const res = await window.storage.get(SYNC_CONFIG_KEY);
+    if(res && res.value) syncConfig = JSON.parse(res.value);
+  }catch(e){ /* sem config ainda */ }
+}
+async function saveSyncConfig(cfg){
+  syncConfig = cfg;
+  try{ await window.storage.set(SYNC_CONFIG_KEY, JSON.stringify(syncConfig)); }
+  catch(e){ console.error('Erro ao salvar config de sync', e); }
+}
+
+function setSyncStatus(s){
+  syncStatus = s;
+  const btn = document.getElementById('syncBtn');
+  if(!btn) return;
+  const colors = { off:'var(--ink-light)', syncing:'var(--amber)', synced:'var(--green)', error:'var(--red)', offline:'var(--ink-light)' };
+  btn.style.color = colors[s] || 'var(--ink)';
+}
+
+let syncDebounceTimer = null;
+function scheduleCloudSync(){
+  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+  clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(pushToCloud, 1500);
+}
+
+async function pushToCloud(){
+  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+  setSyncStatus('syncing');
+  try{
+    const res = await fetch(syncConfig.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
+      body: JSON.stringify({ token: syncConfig.token, state, updatedAt: state.updatedAt })
+    });
+    const data = await res.json();
+    if(data && data.ok){
+      setSyncStatus('synced');
+    } else {
+      setSyncStatus('error');
+    }
+  }catch(e){
+    console.error('Erro ao sincronizar (envio)', e);
+    setSyncStatus('offline');
+  }
+}
+
+async function pullFromCloudAndMerge(){
+  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+  setSyncStatus('syncing');
+  try{
+    const url = syncConfig.url + '?token=' + encodeURIComponent(syncConfig.token);
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data && data.ok){
+      if(data.state && (data.updatedAt || 0) > (state.updatedAt || 0)){
+        // nuvem mais recente que o dispositivo: adota a versão da nuvem
+        state = data.state;
+        await saveDataLocal();
+        render();
+        showToast('Dados atualizados da nuvem');
+      } else if(state.lists && state.lists.length !== undefined){
+        // dispositivo mais recente (ou nuvem vazia): envia o local
+        await pushToCloud();
+      }
+      setSyncStatus('synced');
+    } else {
+      setSyncStatus('error');
+    }
+  }catch(e){
+    console.error('Erro ao sincronizar (recebimento)', e);
+    setSyncStatus('offline');
+  }
+}
+
+function openSyncModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Sincronização na nuvem</h2>
+      <p class="sub">Cole aqui a URL do Web App do Google Apps Script (termina em /exec) e o token combinado. Os dados continuam salvos neste dispositivo mesmo sem sincronização.</p>
+      <div class="toggle-row">
+        <label for="syncToggle">Sincronização ativa</label>
+        <label class="switch"><input type="checkbox" id="syncToggle" ${syncConfig.enabled ? 'checked' : ''}><span class="slider"></span></label>
+      </div>
+      <div class="field">
+        <label>URL do Web App</label>
+        <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${escapeHtml(syncConfig.url || '')}">
+      </div>
+      <div class="field">
+        <label>Token</label>
+        <input type="text" id="syncToken" placeholder="ex: joao-familia-9f3a2" value="${escapeHtml(syncConfig.token || '')}">
+      </div>
+      <div class="modal-buttons">
+        <button id="syncCancel">Cancelar</button>
+        <button class="primary" id="syncSave">Salvar e sincronizar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#syncCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#syncSave').onclick = async ()=>{
+    const cfg = {
+      enabled: overlay.querySelector('#syncToggle').checked,
+      url: overlay.querySelector('#syncUrl').value.trim(),
+      token: overlay.querySelector('#syncToken').value.trim()
+    };
+    await saveSyncConfig(cfg);
+    overlay.remove();
+    if(cfg.enabled && cfg.url && cfg.token){
+      showToast('Sincronizando...');
+      await pullFromCloudAndMerge();
+    } else {
+      setSyncStatus('off');
+      showToast('Configuração salva');
+    }
+  };
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+}
+const DEFAULT_CATEGORIES = ['Hortifruti','Açougue','Mercearia','Limpeza','Higiene','Bebidas','Padaria','Outros'];
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function getActiveList(){
+  return state.lists.find(l => l.id === state.activeListId) || null;
+}
+
+/* =================== INIT =================== */
+async function init(){
+  state = await loadData();
+  if(!state.lists) state.lists = [];
+  if(!state.finishedLists) state.finishedLists = [];
+  if(!state.updatedAt) state.updatedAt = 0;
+  if(state.lists.length === 0){
+    // primeira vez: cria uma lista de exemplo "Mercado"
+    const l = createListObject('Mercado', false, 7);
+    state.lists.push(l);
+    state.activeListId = l.id;
+    await saveData();
+  }
+  if(!state.activeListId || !getActiveList()){
+    state.activeListId = state.lists[0].id;
+  }
+  render();
+
+  await loadSyncConfig();
+  setSyncStatus(syncConfig.enabled ? 'syncing' : 'off');
+  if(syncConfig.enabled) pullFromCloudAndMerge();
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(e=> console.warn('Falha ao registrar service worker', e));
+  }
+}
+
+function createListObject(name, recurring, frequencyDays, baseName){
+  return {
+    id: uid(),
+    name: name,
+    baseName: baseName || name,
+    recurring: { enabled: !!recurring, frequencyDays: frequencyDays || 7 },
+    createdAt: Date.now(),
+    location: null, // {type:'auto'} ou {type:'address', value:'...'}
+    items: []
+  };
+}
+
+/* =================== RENDER =================== */
+function render(){
+  renderTabs();
+  renderMain();
+}
+
+function renderTabs(){
+  const row = document.getElementById('tabsRow');
+  row.innerHTML = '';
+  state.lists.forEach(l=>{
+    const tab = document.createElement('button');
+    tab.className = 'tab' + (l.id === state.activeListId ? ' active' : '');
+    tab.innerHTML = (l.recurring.enabled ? '<span class="rec-mark">&#8635;</span> ' : '') + escapeHtml(l.name);
+    tab.onclick = ()=>{ state.activeListId = l.id; saveData(); render(); };
+    row.appendChild(tab);
+  });
+  const addTab = document.createElement('button');
+  addTab.className = 'tab add-tab';
+  addTab.textContent = '+ nova lista';
+  addTab.onclick = openNewListModal;
+  row.appendChild(addTab);
+}
+
+function renderMain(){
+  const main = document.getElementById('mainArea');
+  main.innerHTML = '';
+  const list = getActiveList();
+  if(!list){
+    main.innerHTML = `<div class="empty-state">
+      <div class="big">🧺</div>
+      <h2>Nenhuma lista ainda</h2>
+      <p>Crie sua primeira lista de compras para começar a organizar suas idas ao mercado.</p>
+    </div>`;
+    return;
+  }
+
+  const total = list.items.length;
+  const bought = list.items.filter(i=>i.bought).length;
+
+  const receipt = document.createElement('div');
+  receipt.className = 'receipt';
+
+  // head
+  const metaParts = [];
+  if(list.recurring.enabled) metaParts.push(`<span class="rec-badge">&#8635; recorrente · a cada ${list.recurring.frequencyDays}d</span>`);
+  metaParts.push(new Date(list.createdAt).toLocaleDateString('pt-BR'));
+
+  receipt.innerHTML = `
+    <div class="receipt-head">
+      <p class="list-name">${escapeHtml(list.name)}</p>
+      <div class="list-meta">${metaParts.join(' · ')}</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" style="width:${total? Math.round(bought/total*100):0}%"></div></div>
+      <div class="progress-label">${bought} de ${total} ${total===1?'item':'itens'}</div>
+    </div>
+    <div id="categoriesArea"></div>
+    <div class="add-item-form" id="addItemForm">
+      <input type="text" class="f-name" id="newItemName" placeholder="Item (ex: Tomate)">
+      <input type="text" class="f-qty" id="newItemQty" placeholder="1">
+      <select class="f-cat" id="newItemCat"></select>
+      <button type="button" id="addItemBtn">Add</button>
+    </div>
+  `;
+  main.appendChild(receipt);
+
+  // categorias usadas + dropdown (em branco/"Sem categoria" por padrão)
+  const usedCats = Array.from(new Set(list.items.map(i=>i.category))).filter(c=>c);
+  const allCats = Array.from(new Set([...DEFAULT_CATEGORIES, ...usedCats]));
+  const catSelect = receipt.querySelector('#newItemCat');
+  const optNone = document.createElement('option');
+  optNone.value = ''; optNone.textContent = 'Sem categoria';
+  catSelect.appendChild(optNone);
+  allCats.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    catSelect.appendChild(opt);
+  });
+  const optOther = document.createElement('option');
+  optOther.value = '__nova__'; optOther.textContent = '+ nova categoria';
+  catSelect.appendChild(optOther);
+
+  // render items grouped by category, pending first then bought within group; bought items pushed to bottom overall via sort
+  const catArea = receipt.querySelector('#categoriesArea');
+  const grouped = {};
+  list.items.forEach(it=>{
+    if(!grouped[it.category]) grouped[it.category] = [];
+    grouped[it.category].push(it);
+  });
+  Object.keys(grouped).forEach(cat=>{
+    grouped[cat].sort((a,b)=> (a.bought === b.bought) ? 0 : (a.bought ? 1 : -1));
+  });
+
+  if(total === 0){
+    catArea.innerHTML = `<p style="color:var(--ink-light); font-size:13px; padding:14px 0;">Sua lista está vazia. Adicione itens abaixo.</p>`;
+  } else {
+    Object.keys(grouped).sort((a,b)=>{
+      if(a === '') return -1;
+      if(b === '') return 1;
+      return a.localeCompare(b, 'pt-BR');
+    }).forEach(cat=>{
+      const block = document.createElement('div');
+      block.className = 'category-block';
+      const catLabel = cat === '' ? 'Sem categoria' : cat;
+      block.innerHTML = `<p class="category-title">${escapeHtml(catLabel)}</p>`;
+      grouped[cat].forEach(item=>{
+        block.appendChild(renderItemRow(item, list));
+      });
+      catArea.appendChild(block);
+    });
+  }
+
+  // add item handlers
+  receipt.querySelector('#addItemBtn').onclick = ()=> handleAddItem(list, catSelect);
+  receipt.querySelector('#newItemName').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') handleAddItem(list, catSelect);
+  });
+  catSelect.addEventListener('change', ()=>{
+    if(catSelect.value === '__nova__'){
+      const name = prompt('Nome da nova categoria:');
+      if(name && name.trim()){
+        const opt = document.createElement('option');
+        opt.value = name.trim(); opt.textContent = name.trim();
+        catSelect.insertBefore(opt, optOther);
+        catSelect.value = name.trim();
+      } else {
+        catSelect.value = '';
+      }
+    }
+  });
+
+  // action buttons
+  const actions = document.createElement('div');
+  actions.className = 'list-actions';
+  actions.innerHTML = `
+    <button id="mapBtn">📍 Ver no mapa</button>
+    <button id="pdfBtn">🧾 Gerar PDF</button>
+    <button id="recurBtn">${list.recurring.enabled ? '🔁 Recorrência: ativa' : '🔁 Recorrência'}</button>
+    <button class="primary" id="finishBtn">✓ Finalizar compra</button>
+  `;
+  main.appendChild(actions);
+
+  actions.querySelector('#mapBtn').onclick = ()=> openMapModal(list);
+  actions.querySelector('#pdfBtn').onclick = ()=> generatePdf(list);
+  actions.querySelector('#recurBtn').onclick = ()=> openRecurringSettingsModal(list);
+  actions.querySelector('#finishBtn').onclick = ()=> openFinishModal(list);
+
+  document.getElementById('fabAdd').onclick = ()=>{
+    receipt.querySelector('#newItemName').focus();
+    receipt.scrollIntoView({behavior:'smooth', block:'end'});
+  };
+}
+
+function renderItemRow(item, list){
+  const row = document.createElement('div');
+  row.className = 'item-row' + (item.bought ? ' bought' : '');
+  row.innerHTML = `
+    <button class="check" aria-label="Marcar como comprado">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"/></svg>
+    </button>
+    <div class="item-main">
+      <div class="item-name-row">
+        <span class="item-name">${escapeHtml(item.name)}</span>
+      </div>
+    </div>
+    <span class="item-qty">${escapeHtml(String(item.qty))}</span>
+    <button class="item-del" aria-label="Remover item">&times;</button>
+  `;
+  row.querySelector('.check').onclick = ()=>{
+    item.bought = !item.bought;
+    saveData(); render();
+  };
+  row.querySelector('.item-del').onclick = ()=>{
+    list.items = list.items.filter(i=>i.id !== item.id);
+    saveData(); render();
+  };
+  return row;
+}
+
+function handleAddItem(list, catSelect){
+  const nameInput = document.getElementById('newItemName');
+  const qtyInput = document.getElementById('newItemQty');
+  const name = nameInput.value.trim();
+  if(!name){ nameInput.focus(); return; }
+  const qty = qtyInput.value.trim() || '1';
+  const category = catSelect.value === '__nova__' ? '' : catSelect.value;
+  list.items.push({ id: uid(), name, qty, category, bought:false });
+  saveData();
+  nameInput.value = '';
+  qtyInput.value = '';
+  render();
+  setTimeout(()=>{
+    const el = document.getElementById('newItemName');
+    if(el) el.focus();
+  }, 30);
+}
+
+/* =================== NOVA LISTA =================== */
+function openNewListModal(prefillItems){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Nova lista</h2>
+      <p class="sub">Dê um nome e configure se ela deve se repetir automaticamente.</p>
+      <div class="field">
+        <label>Nome da lista</label>
+        <input type="text" id="nlName" placeholder="Ex: Mercado, Farmácia, Feira">
+      </div>
+      <div class="toggle-row">
+        <label for="nlRecurring">Lista recorrente</label>
+        <label class="switch"><input type="checkbox" id="nlRecurring"><span class="slider"></span></label>
+      </div>
+      <div class="field" id="freqField" style="display:none;">
+        <label>Repetir a cada</label>
+        <div class="seg" id="freqSeg">
+          <button type="button" data-v="1">1 dia</button>
+          <button type="button" data-v="7" class="active">7 dias</button>
+          <button type="button" data-v="14">14 dias</button>
+          <button type="button" data-v="30">30 dias</button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="nlCancel">Cancelar</button>
+        <button class="primary" id="nlCreate">Criar lista</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  let freq = 7;
+  overlay.querySelector('#nlRecurring').onchange = (e)=>{
+    overlay.querySelector('#freqField').style.display = e.target.checked ? 'block' : 'none';
+  };
+  overlay.querySelectorAll('#freqSeg button').forEach(b=>{
+    b.onclick = ()=>{
+      overlay.querySelectorAll('#freqSeg button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      freq = parseInt(b.dataset.v, 10);
+    };
+  });
+  overlay.querySelector('#nlCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#nlCreate').onclick = ()=>{
+    const name = overlay.querySelector('#nlName').value.trim();
+    if(!name){ overlay.querySelector('#nlName').focus(); return; }
+    const recurring = overlay.querySelector('#nlRecurring').checked;
+    const list = createListObject(name, recurring, freq);
+    if(prefillItems && prefillItems.length){
+      list.items = prefillItems.map(i=> ({ id: uid(), name:i.name, qty:i.qty, category:i.category, bought:false }));
+    }
+    state.lists.push(list);
+    state.activeListId = list.id;
+    saveData();
+    overlay.remove();
+    render();
+    showToast('Lista criada');
+  };
+  overlay.querySelector('#nlName').focus();
+}
+document.getElementById('newListBtn').onclick = ()=> openNewListModal();
+document.getElementById('historyBtn').onclick = ()=> openFinishedModal();
+document.getElementById('syncBtn').onclick = ()=> openSyncModal();
+
+/* =================== RECORRÊNCIA DE LISTA EXISTENTE =================== */
+function openRecurringSettingsModal(list){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const currentFreq = list.recurring.frequencyDays || 7;
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Recorrência da lista</h2>
+      <p class="sub">Quando ativada, ao finalizar esta compra uma nova lista é criada automaticamente com a próxima data, com todos os itens desmarcados.</p>
+      <div class="toggle-row">
+        <label for="rsToggle">Lista recorrente</label>
+        <label class="switch"><input type="checkbox" id="rsToggle" ${list.recurring.enabled ? 'checked' : ''}><span class="slider"></span></label>
+      </div>
+      <div class="field" id="rsFreqField" style="display:${list.recurring.enabled ? 'block' : 'none'};">
+        <label>Repetir a cada</label>
+        <div class="seg" id="rsFreqSeg">
+          <button type="button" data-v="1">1 dia</button>
+          <button type="button" data-v="7">7 dias</button>
+          <button type="button" data-v="14">14 dias</button>
+          <button type="button" data-v="30">30 dias</button>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="rsCancel">Cancelar</button>
+        <button class="primary" id="rsSave">Salvar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  let freq = currentFreq;
+  overlay.querySelectorAll('#rsFreqSeg button').forEach(b=>{
+    if(parseInt(b.dataset.v,10) === currentFreq) b.classList.add('active');
+    b.onclick = ()=>{
+      overlay.querySelectorAll('#rsFreqSeg button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      freq = parseInt(b.dataset.v, 10);
+    };
+  });
+  overlay.querySelector('#rsToggle').onchange = (e)=>{
+    overlay.querySelector('#rsFreqField').style.display = e.target.checked ? 'block' : 'none';
+  };
+  overlay.querySelector('#rsCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#rsSave').onclick = ()=>{
+    const enabled = overlay.querySelector('#rsToggle').checked;
+    list.recurring.enabled = enabled;
+    list.recurring.frequencyDays = freq;
+    if(!list.baseName) list.baseName = list.name;
+    saveData();
+    overlay.remove();
+    render();
+    showToast(enabled ? 'Recorrência ativada' : 'Recorrência desativada');
+  };
+}
+
+/* =================== ARQUIVAR / RENOVAR =================== */
+function archiveList(list){
+  state.lists = state.lists.filter(l=>l.id !== list.id);
+  const snapshot = JSON.parse(JSON.stringify(list));
+  snapshot.finishedAt = Date.now();
+  state.finishedLists.unshift(snapshot);
+  if(state.activeListId === list.id){
+    state.activeListId = state.lists.length ? state.lists[0].id : null;
+  }
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function nextRecurrenceName(list){
+  const base = list.baseName || list.name;
+  const next = new Date(Date.now() + (list.recurring.frequencyDays || 7) * 24 * 60 * 60 * 1000);
+  return { base, label: `${base} ${pad2(next.getDate())}/${pad2(next.getMonth()+1)}` };
+}
+
+function autoRenewRecurringList(list){
+  const { base, label } = nextRecurrenceName(list);
+  const newList = createListObject(label, true, list.recurring.frequencyDays, base);
+  newList.items = list.items.map(it=> ({ id: uid(), name: it.name, qty: it.qty, category: it.category, bought:false }));
+  newList.location = list.location || null;
+  return newList;
+}
+
+function reactivateFinishedList(id, mode){
+  const idx = state.finishedLists.findIndex(l=>l.id===id);
+  if(idx === -1) return;
+  const [snapshot] = state.finishedLists.splice(idx,1);
+  const sourceItems = mode === 'pending' ? snapshot.items.filter(i=>!i.bought) : snapshot.items;
+  const newList = createListObject(snapshot.name, snapshot.recurring.enabled, snapshot.recurring.frequencyDays, snapshot.baseName);
+  newList.location = snapshot.location || null;
+  newList.items = sourceItems.map(it=> ({ id: uid(), name: it.name, qty: it.qty, category: it.category, bought: false }));
+  state.lists.push(newList);
+  state.activeListId = newList.id;
+  saveData();
+  render();
+  showToast('Lista reativada');
+}
+
+/* =================== COMPRAS FINALIZADAS =================== */
+function openFinishedModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const finished = state.finishedLists || [];
+  let bodyHtml;
+  if(finished.length === 0){
+    bodyHtml = `<div class="empty-state" style="padding:24px 8px;">
+      <div class="big">🗂️</div>
+      <h2>Nenhuma compra finalizada</h2>
+      <p>Quando você finalizar uma compra, ela aparece aqui para consulta.</p>
+    </div>`;
+  } else {
+    bodyHtml = finished.map(l=>{
+      const bought = l.items.filter(i=>i.bought).length;
+      const total = l.items.length;
+      const date = new Date(l.finishedAt).toLocaleDateString('pt-BR');
+      return `
+        <div class="carry-item">
+          <div class="ci-name">${escapeHtml(l.name)}<small>finalizada em ${date} · ${bought}/${total} itens comprados</small></div>
+          <button class="carry-toggle keep" data-id="${l.id}">Visualizar</button>
+        </div>`;
+    }).join('');
+  }
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Compras finalizadas</h2>
+      <p class="sub">Histórico de compras já finalizadas. Visualize uma para ver os itens e, se quiser, reativá-la.</p>
+      <div id="finishedArea">${bodyHtml}</div>
+      <div class="modal-buttons">
+        <button id="fhClose">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#fhClose').onclick = ()=> overlay.remove();
+  overlay.querySelectorAll('.carry-toggle[data-id]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.dataset.id;
+      overlay.remove();
+      openFinishedDetailModal(id);
+    };
+  });
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+}
+
+function openFinishedDetailModal(id, mode){
+  const list = state.finishedLists.find(l=>l.id===id);
+  if(!list){ showToast('Esta compra não está mais no histórico'); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  if(mode === 'choose'){
+    const total = list.items.length;
+    const pendingCount = list.items.filter(i=>!i.bought).length;
+    overlay.innerHTML = `
+      <div class="modal">
+        <h2>Reativar lista</h2>
+        <p class="sub">Quais itens devem voltar para "${escapeHtml(list.name)}"?</p>
+        <div class="map-options">
+          <button class="map-option-btn" id="reAll">
+            <span class="moi">📦</span>
+            <span class="mot"><strong>Todos os itens</strong><span>${total} ${total===1?'item':'itens'}, todos desmarcados</span></span>
+          </button>
+          <button class="map-option-btn" id="rePending">
+            <span class="moi">📝</span>
+            <span class="mot"><strong>Somente não comprados</strong><span>${pendingCount} ${pendingCount===1?'item':'itens'} ainda sem check</span></span>
+          </button>
+        </div>
+        <div class="modal-buttons">
+          <button id="reBack">Voltar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#reBack').onclick = ()=>{ overlay.remove(); openFinishedDetailModal(id); };
+    overlay.querySelector('#reAll').onclick = ()=>{ overlay.remove(); reactivateFinishedList(id, 'all'); };
+    overlay.querySelector('#rePending').onclick = ()=>{ overlay.remove(); reactivateFinishedList(id, 'pending'); };
+    overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+    return;
+  }
+
+  const bought = list.items.filter(i=>i.bought).length;
+  const total = list.items.length;
+  const date = new Date(list.finishedAt).toLocaleDateString('pt-BR');
+
+  const grouped = {};
+  list.items.forEach(it=>{
+    if(!grouped[it.category]) grouped[it.category] = [];
+    grouped[it.category].push(it);
+  });
+  const catsSorted = Object.keys(grouped).sort((a,b)=>{
+    if(a === '') return -1;
+    if(b === '') return 1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+
+  let itemsHtml = total === 0 ? '<p style="color:var(--ink-light); font-size:13px;">Esta lista não tinha itens.</p>' : '';
+  catsSorted.forEach(cat=>{
+    itemsHtml += `<p class="category-title" style="margin-top:14px;">${escapeHtml(cat === '' ? 'Sem categoria' : cat)}</p>`;
+    grouped[cat].forEach(it=>{
+      itemsHtml += `
+        <div class="item-row${it.bought ? ' bought' : ''}">
+          <span class="check" style="pointer-events:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 18 20 6"/></svg>
+          </span>
+          <div class="item-main"><span class="item-name">${escapeHtml(it.name)}</span></div>
+          <span class="item-qty">${escapeHtml(String(it.qty))}</span>
+        </div>`;
+    });
+  });
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>${escapeHtml(list.name)}</h2>
+      <p class="sub">Finalizada em ${date} · ${bought}/${total} itens comprados</p>
+      <div>${itemsHtml}</div>
+      <div class="modal-buttons">
+        <button id="fdClose">Fechar</button>
+        <button class="primary" id="fdReactivate">Reativar lista</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#fdClose').onclick = ()=> overlay.remove();
+  overlay.querySelector('#fdReactivate').onclick = ()=>{
+    overlay.remove();
+    openFinishedDetailModal(id, 'choose');
+  };
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+}
+
+/* =================== FINALIZAR COMPRA =================== */
+function openFinishModal(list){
+  if(list.recurring.enabled){
+    openRecurringFinishModal(list);
+    return;
+  }
+
+  const pending = list.items.filter(i=>!i.bought);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  if(pending.length === 0){
+    overlay.innerHTML = `
+      <div class="modal">
+        <h2>Finalizar compra</h2>
+        <p class="sub">Todos os itens foram comprados. Esta compra sairá das suas listas ativas. Deseja iniciar uma nova lista agora?</p>
+        <div class="modal-buttons">
+          <button id="fCancel">Apenas finalizar</button>
+          <button class="primary" id="fNew">Finalizar e criar nova lista</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#fCancel').onclick = ()=>{
+      archiveList(list);
+      saveData();
+      overlay.remove();
+      render();
+      showToast('Compra finalizada');
+    };
+    overlay.querySelector('#fNew').onclick = ()=>{
+      archiveList(list);
+      saveData();
+      overlay.remove();
+      render();
+      openNewListModal([]);
+    };
+    return;
+  }
+
+  const keepState = {};
+  pending.forEach(i=> keepState[i.id] = true);
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Finalizar compra</h2>
+      <p class="sub">Esta compra sairá das suas listas ativas. Ainda há ${pending.length} ${pending.length===1?'item não comprado':'itens não comprados'} — eles podem iniciar uma nova lista. Toque para retirar algum item.</p>
+      <div id="carryArea"></div>
+      <div class="modal-buttons">
+        <button id="fCancel">Cancelar</button>
+        <button class="primary" id="fCreate">Finalizar compra</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const carryArea = overlay.querySelector('#carryArea');
+  pending.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'carry-item';
+    const catLabel = item.category ? item.category : 'Sem categoria';
+    row.innerHTML = `
+      <div class="ci-name">${escapeHtml(item.name)}<small>${escapeHtml(catLabel)} · ${escapeHtml(String(item.qty))}</small></div>
+      <button class="carry-toggle keep" data-id="${item.id}">Manter</button>
+    `;
+    const btn = row.querySelector('.carry-toggle');
+    btn.onclick = ()=>{
+      keepState[item.id] = !keepState[item.id];
+      if(keepState[item.id]){ btn.textContent='Manter'; btn.className='carry-toggle keep'; }
+      else { btn.textContent='Retirado'; btn.className='carry-toggle remove'; }
+    };
+    carryArea.appendChild(row);
+  });
+
+  overlay.querySelector('#fCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#fCreate').onclick = ()=>{
+    const toCarry = pending.filter(i=> keepState[i.id]).map(i=>({name:i.name, qty:i.qty, category:i.category}));
+    archiveList(list);
+    saveData();
+    overlay.remove();
+    render();
+    if(toCarry.length){
+      openNewListModal(toCarry);
+    } else {
+      showToast('Compra finalizada');
+    }
+  };
+}
+
+function openRecurringFinishModal(list){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const { label } = nextRecurrenceName(list);
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Finalizar compra</h2>
+      <p class="sub">Esta é uma lista recorrente. Ela será arquivada nas compras finalizadas e uma nova lista <strong>"${escapeHtml(label)}"</strong> será criada automaticamente com todos os itens desmarcados.</p>
+      <div class="modal-buttons">
+        <button id="fCancel">Cancelar</button>
+        <button class="primary" id="fConfirm">Finalizar compra</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#fCancel').onclick = ()=> overlay.remove();
+  overlay.querySelector('#fConfirm').onclick = ()=>{
+    const newList = autoRenewRecurringList(list);
+    archiveList(list);
+    state.lists.push(newList);
+    state.activeListId = newList.id;
+    saveData();
+    overlay.remove();
+    render();
+    showToast('Nova lista criada: ' + newList.name);
+  };
+}
+
+/* =================== MAPA =================== */
+function openMapModal(list){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h2>Ver no mapa</h2>
+      <p class="sub">Encontre um mercado para a lista "${escapeHtml(list.name)}".</p>
+      <div class="map-options">
+        <button class="map-option-btn" id="mapAuto">
+          <span class="moi">📍</span>
+          <span class="mot"><strong>Usar minha localização atual</strong><span>Buscar mercados próximos de onde você está</span></span>
+        </button>
+        <button class="map-option-btn" id="mapAddr">
+          <span class="moi">🗺️</span>
+          <span class="mot"><strong>Definir um local específico</strong><span>Calcular rota até um endereço ou mercado</span></span>
+        </button>
+      </div>
+      <div class="field" id="addrField" style="display:none; margin-top:14px;">
+        <label>Endereço ou nome do mercado</label>
+        <input type="text" id="addrInput" placeholder="Ex: Supermercado Extra, Rua X, 123">
+      </div>
+      <div class="modal-buttons" id="addrButtons" style="display:none;">
+        <button id="addrCancel">Voltar</button>
+        <button class="primary" id="addrGo">Calcular rota</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#mapAuto').onclick = ()=>{
+    showToast('Buscando sua localização...');
+    if(!navigator.geolocation){
+      window.open('https://www.google.com/maps/search/mercado+perto+de+mim', '_blank');
+      overlay.remove();
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos)=>{
+        const { latitude, longitude } = pos.coords;
+        const url = `https://www.google.com/maps/search/mercado/@${latitude},${longitude},15z`;
+        window.open(url, '_blank');
+        overlay.remove();
+      },
+      ()=>{
+        window.open('https://www.google.com/maps/search/mercado+perto+de+mim', '_blank');
+        overlay.remove();
+      },
+      { timeout: 8000 }
+    );
+  };
+
+  overlay.querySelector('#mapAddr').onclick = ()=>{
+    overlay.querySelector('#addrField').style.display = 'block';
+    overlay.querySelector('#addrButtons').style.display = 'flex';
+    overlay.querySelector('.map-options').style.display = 'none';
+    overlay.querySelector('#addrInput').focus();
+  };
+  overlay.querySelector('#addrCancel').onclick = ()=>{
+    overlay.querySelector('#addrField').style.display = 'none';
+    overlay.querySelector('#addrButtons').style.display = 'none';
+    overlay.querySelector('.map-options').style.display = 'flex';
+  };
+  overlay.querySelector('#addrGo').onclick = ()=>{
+    const addr = overlay.querySelector('#addrInput').value.trim();
+    if(!addr){ overlay.querySelector('#addrInput').focus(); return; }
+    list.location = { type:'address', value: addr };
+    saveData();
+    const dest = encodeURIComponent(addr);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
+    window.open(url, '_blank');
+    overlay.remove();
+  };
+
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+}
+
+/* =================== PDF =================== */
+function generatePdf(list){
+  if(!window.jspdf){ showToast('Erro ao carregar gerador de PDF'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:[300, 600] });
+  let y = 36;
+  doc.setFont('courier','bold');
+  doc.setFontSize(15);
+  doc.text(list.name.toUpperCase(), 150, y, { align:'center' });
+  y += 18;
+  doc.setFont('courier','normal');
+  doc.setFontSize(9);
+  doc.text(new Date(list.createdAt).toLocaleDateString('pt-BR'), 150, y, { align:'center' });
+  y += 6;
+  doc.setLineDashPattern([2,2], 0);
+  doc.line(20, y, 280, y);
+  y += 18;
+
+  const grouped = {};
+  list.items.forEach(it=>{
+    if(!grouped[it.category]) grouped[it.category] = [];
+    grouped[it.category].push(it);
+  });
+
+  doc.setFontSize(10);
+  Object.keys(grouped).sort((a,b)=>{
+    if(a === '') return -1;
+    if(b === '') return 1;
+    return a.localeCompare(b, 'pt-BR');
+  }).forEach(cat=>{
+    doc.setFont('courier','bold');
+    doc.text((cat === '' ? 'SEM CATEGORIA' : cat.toUpperCase()), 20, y);
+    y += 14;
+    doc.setFont('courier','normal');
+    grouped[cat].forEach(item=>{
+      const mark = item.bought ? '[x]' : '[ ]';
+      const line = `${mark} ${item.qty}x  ${item.name}`;
+      doc.text(line.length > 44 ? line.slice(0,44) : line, 26, y);
+      y += 14;
+      if(y > 560){ doc.addPage([300,600]); y = 36; }
+    });
+    y += 6;
+  });
+
+  y += 4;
+  doc.setLineDashPattern([2,2], 0);
+  doc.line(20, y, 280, y);
+  y += 16;
+  const bought = list.items.filter(i=>i.bought).length;
+  doc.setFont('courier','bold');
+  doc.text(`TOTAL: ${bought}/${list.items.length} itens`, 150, y, { align:'center' });
+
+  doc.save(`${list.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase() || 'lista'}.pdf`);
+  showToast('PDF gerado');
+}
+
+/* =================== UTIL =================== */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+init();
+</script>
+</body>
+</html>
