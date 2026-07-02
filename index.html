@@ -8,12 +8,15 @@
 <meta name="theme-color" content="#3F6B4A">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Compras">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --paper:#F4EFE3;
@@ -446,9 +449,36 @@ async function saveData(){
 
 let state = { lists: [], activeListId: null, finishedLists: [], appMode: 'simple', theme: 'light', itemHistory: {}, updatedAt: 0 };
 
-/* =================== SINCRONIZAÇÃO (Apps Script + Sheets) =================== */
-let syncConfig = { url: '', token: '', enabled: false };
+/* =================== FIREBASE / FIRESTORE =================== */
+// Cole aqui o objeto de configuração do seu projeto Firebase
+// (Console do Firebase -> Configurações do projeto -> Seus apps -> Config)
+// Esses valores NÃO são secretos; a proteção real vem das Regras de Segurança do Firestore.
+const firebaseConfig = {
+  apiKey: "AIzaSyAddb0kDSzS6OFmQ1dhHnkRQ-5FMcw4IBs",
+  authDomain: "lista-de-compras-bc2dc.firebaseapp.com",
+  projectId: "lista-de-compras-bc2dc",
+  storageBucket: "lista-de-compras-bc2dc.appspot.com",
+  messagingSenderId: "134999197792",
+  appId: "1:134999197792:web:2c21a82bf3da1ccb7d9b05"
+};
+
+const COLLECTION_NAME = 'shoppingLists';
+let db = null;
+let firebaseReady = false;
+try{
+  if(firebaseConfig.apiKey !== 'COLE_AQUI'){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+  }
+}catch(e){
+  console.warn('Firebase não configurado ainda', e);
+}
+
+let syncConfig = { ownerId: '', enabled: false };
 let syncStatus = 'off'; // off | syncing | synced | error | offline
+let unsubscribeSnapshot = null;
+let applyingRemoteUpdate = false; // evita loop: ignora o eco do próprio salvamento
 
 async function loadSyncConfig(){
   try{
@@ -470,103 +500,114 @@ function setSyncStatus(s){
   btn.style.color = colors[s] || 'var(--ink)';
 }
 
+// "ownerId" hoje é um código combinado manualmente (ex: nome da família).
+// Quando o login (Fase 3) existir, basta trocar esse valor pelo uid do Firebase Auth
+// sem mudar a estrutura de dados nem as funções abaixo.
+function getDocRef(){
+  if(!db || !syncConfig.ownerId) return null;
+  return db.collection(COLLECTION_NAME).doc(syncConfig.ownerId);
+}
+
 let syncDebounceTimer = null;
 function scheduleCloudSync(){
-  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+  if(!firebaseReady || !syncConfig.enabled || !syncConfig.ownerId) return;
+  if(applyingRemoteUpdate) return; // não reenviar o que acabamos de receber da nuvem
   clearTimeout(syncDebounceTimer);
-  syncDebounceTimer = setTimeout(pushToCloud, 1500);
+  syncDebounceTimer = setTimeout(pushToCloud, 1200);
 }
 
 async function pushToCloud(){
-  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+  const ref = getDocRef();
+  if(!ref) return;
   setSyncStatus('syncing');
   try{
-    const res = await fetch(syncConfig.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
-      body: JSON.stringify({ token: syncConfig.token, state, updatedAt: state.updatedAt })
-    });
-    const data = await res.json();
-    setSyncStatus(data && data.ok ? 'synced' : 'error');
+    await ref.set({ state, updatedAt: state.updatedAt }, { merge: false });
+    setSyncStatus('synced');
   }catch(e){
     console.error('Erro ao sincronizar (envio)', e);
     setSyncStatus('offline');
   }
 }
 
-async function pullFromCloudAndMerge(){
-  if(!syncConfig.enabled || !syncConfig.url || !syncConfig.token) return;
+// Escuta em tempo real: assim que qualquer dispositivo salvar, este listener
+// dispara sozinho (sem polling, sem precisar tocar em botão nenhum).
+function startRealtimeSync(){
+  if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  const ref = getDocRef();
+  if(!ref) return;
   setSyncStatus('syncing');
-  try{
-    const url = syncConfig.url + '?token=' + encodeURIComponent(syncConfig.token);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(data && data.ok){
-      if(data.state && (data.updatedAt || 0) > (state.updatedAt || 0)){
-        // nuvem mais recente que o dispositivo: adota a versão da nuvem
-        // preserva preferências locais de aparência (modo/tema) em vez de sobrescrever pela nuvem
-        const localAppMode = state.appMode, localTheme = state.theme;
-        state = data.state;
-        if(!state.appMode) state.appMode = localAppMode || 'simple';
-        if(!state.theme) state.theme = localTheme || 'light';
-        if(!state.itemHistory) state.itemHistory = {};
-        await saveDataLocal();
-        render();
-        showToast('Dados atualizados da nuvem');
-      } else {
-        // dispositivo mais recente (ou nuvem vazia): envia o local
-        await pushToCloud();
-      }
+  unsubscribeSnapshot = ref.onSnapshot((snap)=>{
+    if(!snap.exists){
+      // nada na nuvem ainda: este dispositivo envia o que tem localmente
+      pushToCloud();
       setSyncStatus('synced');
-    } else {
-      setSyncStatus('error');
+      return;
     }
-  }catch(e){
-    console.error('Erro ao sincronizar (recebimento)', e);
-    setSyncStatus('offline');
-  }
+    const data = snap.data();
+    // ignora o eco da própria escrita (metadata.hasPendingWrites = true = ainda é local)
+    if(snap.metadata.hasPendingWrites){ setSyncStatus('synced'); return; }
+    if(data && data.state && (data.updatedAt || 0) > (state.updatedAt || 0)){
+      applyingRemoteUpdate = true;
+      const localAppMode = state.appMode, localTheme = state.theme;
+      state = data.state;
+      if(!state.appMode) state.appMode = localAppMode || 'simple';
+      if(!state.theme) state.theme = localTheme || 'light';
+      if(!state.itemHistory) state.itemHistory = {};
+      saveDataLocal();
+      render();
+      showToast('Dados atualizados de outro dispositivo');
+      applyingRemoteUpdate = false;
+    }
+    setSyncStatus('synced');
+  }, (err)=>{
+    console.error('Erro no listener de sincronização', err);
+    setSyncStatus('error');
+  });
+}
+
+function stopRealtimeSync(){
+  if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  setSyncStatus('off');
 }
 
 function openSyncModal(){
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
+  const configPending = !firebaseReady;
   overlay.innerHTML = `
     <div class="modal">
       <h2>Sincronização na nuvem</h2>
-      <p class="sub">Cole aqui a URL do Web App do Google Apps Script (termina em /exec) e o token combinado. Os dados continuam salvos neste dispositivo mesmo sem sincronização.</p>
+      ${configPending ? `<p class="sub" style="color:var(--red);">O Firebase ainda não foi configurado neste arquivo (edite a constante firebaseConfig no código-fonte).</p>` : ''}
+      <p class="sub">Combine o mesmo "código de sincronização" em todos os seus dispositivos para que as listas fiquem conectadas entre eles.</p>
       <div class="toggle-row">
         <label for="syncToggle">Sincronização ativa</label>
-        <label class="switch"><input type="checkbox" id="syncToggle" ${syncConfig.enabled ? 'checked' : ''}><span class="slider"></span></label>
+        <label class="switch"><input type="checkbox" id="syncToggle" ${syncConfig.enabled ? 'checked' : ''} ${configPending ? 'disabled' : ''}><span class="slider"></span></label>
       </div>
       <div class="field">
-        <label>URL do Web App</label>
-        <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" value="${escapeHtml(syncConfig.url || '')}">
-      </div>
-      <div class="field">
-        <label>Token</label>
-        <input type="text" id="syncToken" placeholder="ex: joao-familia-9f3a2" value="${escapeHtml(syncConfig.token || '')}">
+        <label>Código de sincronização</label>
+        <input type="text" id="syncOwnerId" placeholder="ex: familia-silva-9f3a2" value="${escapeHtml(syncConfig.ownerId || '')}" ${configPending ? 'disabled' : ''}>
       </div>
       <div class="modal-buttons">
         <button id="syncCancel">Cancelar</button>
-        <button class="primary" id="syncSave">Salvar e sincronizar</button>
+        <button class="primary" id="syncSave" ${configPending ? 'disabled' : ''}>Salvar e sincronizar</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
   overlay.querySelector('#syncCancel').onclick = ()=> overlay.remove();
-  overlay.querySelector('#syncSave').onclick = async ()=>{
+  const saveBtn = overlay.querySelector('#syncSave');
+  if(saveBtn) saveBtn.onclick = async ()=>{
     const cfg = {
       enabled: overlay.querySelector('#syncToggle').checked,
-      url: overlay.querySelector('#syncUrl').value.trim(),
-      token: overlay.querySelector('#syncToken').value.trim()
+      ownerId: overlay.querySelector('#syncOwnerId').value.trim()
     };
     await saveSyncConfig(cfg);
     overlay.remove();
-    if(cfg.enabled && cfg.url && cfg.token){
-      showToast('Sincronizando...');
-      await pullFromCloudAndMerge();
+    if(cfg.enabled && cfg.ownerId){
+      showToast('Conectando...');
+      startRealtimeSync();
     } else {
-      setSyncStatus('off');
+      stopRealtimeSync();
       showToast('Configuração salva');
     }
   };
@@ -606,7 +647,7 @@ async function init(){
 
   await loadSyncConfig();
   setSyncStatus(syncConfig.enabled ? 'syncing' : 'off');
-  if(syncConfig.enabled) pullFromCloudAndMerge();
+  if(syncConfig.enabled) startRealtimeSync();
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(e=> console.warn('Falha ao registrar service worker', e));
