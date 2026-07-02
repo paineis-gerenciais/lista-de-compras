@@ -5,7 +5,7 @@
   já que dados precisam estar sempre atualizados quando há conexão.
 */
 
-const CACHE_NAME = 'lista-compras-v1';
+const CACHE_NAME = 'lista-compras-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -35,8 +35,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Nunca cachear chamadas ao backend do Apps Script (dados precisam ser sempre frescos)
-  if (url.hostname.includes('script.google.com')) {
+  // A Cache API só aceita respostas de requisições GET. Qualquer outro
+  // método (POST, PUT, etc.) vai direto para a rede, sem passar pelo cache.
+  // Isso cobre, entre outros, os canais de streaming do Firestore (que usam
+  // POST internamente) e qualquer chamada futura que não seja leitura.
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Nunca cachear chamadas ao Firestore/Firebase (dados precisam ser sempre frescos)
+  if (url.hostname.includes('firestore.googleapis.com') || url.hostname.includes('googleapis.com') || url.hostname.includes('firebaseio.com')) {
     event.respondWith(fetch(event.request).catch(() => new Response(
       JSON.stringify({ ok: false, offline: true }),
       { headers: { 'Content-Type': 'application/json' } }
