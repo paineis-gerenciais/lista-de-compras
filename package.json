@@ -1,0 +1,12 @@
+{
+  "name": "lista-de-compras",
+  "version": "3.0.0",
+  "private": true,
+  "description": "PWA de lista de compras — Fase 3 (segurança, integridade de dados, entrada rápida, modo compra)",
+  "scripts": {
+    "test": "node testes/testes.js",
+    "check": "node testes/checar-sintaxe.js",
+    "verificar": "npm run check && npm test"
+  },
+  "license": "UNLICENSED"
+}

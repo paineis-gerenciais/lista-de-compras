@@ -1,0 +1,71 @@
+rules_version = '2';
+
+/*
+  Lista de Compras — Regras de Segurança (Fase 3)
+
+  O QUE MUDOU E POR QUÊ
+  ---------------------
+  A regra da Fase 2 era:
+
+      allow read, write: if ownerId is string && ownerId.size() > 0;
+
+  Isso permitia que QUALQUER pessoa com o SDK do Firebase e o projectId
+  (que é público por natureza — fica no HTML de todo app Firebase) lesse e
+  escrevesse QUALQUER documento: bastava adivinhar o "código de
+  sincronização". Códigos legíveis como "familia-silva" são enumeráveis.
+  Não era uma senha; era uma porta destrancada com o nome do morador na
+  placa. Com um segundo usuário no app, isso vira incidente de LGPD.
+
+  A regra abaixo exige autenticação e amarra o documento ao uid gerado pelo
+  Firebase Auth — que o usuário não escolhe e não consegue forjar.
+
+  PUBLICAR: Console do Firebase → Firestore Database → Regras → Publicar.
+  Publique DEPOIS de o login estar funcionando, senão o app para de gravar.
+*/
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Confere se o payload tem a forma esperada. Não substitui a validação
+    // do cliente: serve para impedir que um cliente adulterado grave lixo
+    // ou infle o documento até estourar custo de leitura.
+    function validPayload() {
+      return request.resource.data.keys().hasAll(['state', 'updatedAt'])
+          && request.resource.data.state is map
+          && request.resource.data.updatedAt is number
+          // limite de chaves de primeiro nível do estado. Se algum dia isso
+          // apertar, o problema não é a regra: é o modelo monolítico de um
+          // documento por usuário, que a Fase 4 substitui.
+          && request.resource.data.state.keys().size() < 24;
+    }
+
+    function isOwner(ownerId) {
+      return request.auth != null && request.auth.uid == ownerId;
+    }
+
+    match /shoppingLists/{ownerId} {
+
+      // Só o dono lê. Sem login, ninguém lê nada.
+      allow read: if isOwner(ownerId);
+
+      // Criação: o documento nasce com a forma esperada.
+      allow create: if isOwner(ownerId) && validPayload();
+
+      // Atualização: continua sendo o dono e o payload continua válido.
+      // Recusamos escrita que "volta no tempo" — updatedAt nunca retrocede,
+      // o que barra o replay de um estado antigo.
+      allow update: if isOwner(ownerId)
+                    && validPayload()
+                    && request.resource.data.updatedAt >= resource.data.updatedAt;
+
+      // Exclusão dos próprios dados (portabilidade e direito ao
+      // esquecimento — LGPD). Só o dono.
+      allow delete: if isOwner(ownerId);
+    }
+
+    // Qualquer outra coleção é negada por padrão.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

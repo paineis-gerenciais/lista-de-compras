@@ -1,26 +1,28 @@
 {
   "name": "Lista de Compras",
   "short_name": "Compras",
-  "description": "Organize suas listas de compras com estilo de cupom fiscal.",
-  "start_url": "./index.html",
+  "description": "Listas de compras com sincronização entre aparelhos, modo compra e uso offline.",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "background_color": "#F4EFE3",
   "theme_color": "#3F6B4A",
   "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["shopping", "productivity", "lifestyle"],
   "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "name": "Nova lista",
+      "short_name": "Nova lista",
+      "description": "Criar uma lista de compras do zero",
+      "url": "./?acao=nova-lista",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
