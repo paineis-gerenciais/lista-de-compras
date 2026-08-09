@@ -4,7 +4,7 @@ PWA para criar e gerenciar listas de compras do dia a dia. Funciona no navegador
 
 O visual é inspirado em um cupom fiscal: fundo de papel kraft, recibo com bordas serrilhadas, tipografia monoespaçada e itens dispostos como em uma nota de compra.
 
-**Versão atual:** 3.0 (Fase 3 — segurança, integridade de dados, entrada rápida e modo compra)
+**Versão atual:** 4.0-G (Fase 3 completa + Fase 4 bloco G — colaboração familiar)
 **Publicado em:** https://paineis-gerenciais.github.io/lista-de-compras/
 
 > **Nota sobre este documento.** Até a versão 2 o README descrevia um app local que usava `window.storage` e não tinha nuvem nem edição de item. Isso ficou desatualizado por duas fases inteiras. A partir da Fase 3, atualizar a documentação faz parte da Definition of Done — não é tarefa para depois.
@@ -23,6 +23,15 @@ O objetivo é resolver um problema simples e recorrente: organizar o que precisa
 ---
 
 ## 2. Funcionalidades
+
+### Listas compartilhadas (famílias)
+- Criar uma **família** com listas próprias, separadas das pessoais.
+- **Convite** por código de 8 letras ou link, válido por 7 dias.
+- **Papéis**: responsável, editor e só leitura.
+- **Presença em tempo real**: avatares de quem está com o app aberto, e aviso de quem está no mercado agora.
+- **Autoria**: quem adicionou e quem pegou cada item — exibido apenas em contexto de família.
+- **Atribuição** de item a uma pessoa ("você pega a padaria").
+- **Avisos** quando alguém mexe na lista, inclusive com o app em segundo plano.
 
 ### Contas e sincronização
 - Login com **Google** ou **e-mail/senha** (Firebase Auth).
@@ -162,7 +171,7 @@ lista-de-compras/
 ├── package.json             Scripts de verificação e teste
 ├── testes/
 │   ├── harness.js           Carrega o script do index.html no Node
-│   ├── testes.js            51 testes da lógica de negócio
+│   ├── testes.js            69 testes da lógica de negócio
 │   └── checar-sintaxe.js    Verificação sem build
 ├── .github/workflows/qa.yml Portão de qualidade (beta → main)
 ├── README.md                Este documento
@@ -170,6 +179,8 @@ lista-de-compras/
 ├── FIREBASE-SETUP.md        Configuração do Firebase
 ├── FASE-2-RESUMO.md         Registro da Fase 2
 ├── FASE-3-RESUMO.md         Registro da Fase 3
+├── DEPLOY-FASE-3.md         Runbook da Fase 3
+├── DEPLOY-BLOCO-G.md        Runbook do bloco G
 ├── PLANO-EVOLUCAO-PRODUTO.md  Plano das Fases 3 e 4
 └── HISTORICO-DESENVOLVIMENTO.md
 ```
@@ -180,7 +191,7 @@ lista-de-compras/
 
 ```bash
 npm run check       # sintaxe de index.html, sw.js e manifest.json
-npm test            # 51 testes unitários da lógica de negócio
+npm test            # 69 testes unitários da lógica de negócio
 npm run verificar   # os dois
 ```
 
@@ -193,8 +204,10 @@ Não há build: o `index.html` é servido como está. Os testes extraem o `<scri
 ## 7. Limitações conhecidas
 
 - **Um documento por usuário.** O merge por item resolve o pior caso, mas o documento cresce com o histórico e toda leitura traz o estado inteiro. Modelo granular é da Fase 4.
-- **Sem compartilhamento entre contas.** Listas são de um usuário só; "modo família" com papéis é da Fase 4.
-- **Sem notificações.** A recorrência é aplicada na finalização, não por agendador em segundo plano.
+- **Um documento por família**, com a mesma limitação do documento por usuário.
+- **Não há "mover lista" entre pessoal e família** — só exportar e importar.
+- **Push com o app fechado não existe.** Os avisos funcionam com o app aberto em segundo plano; push real exige FCM e uma Cloud Function (bloco J).
+- A recorrência é aplicada na finalização, não por agendador em segundo plano.
 - **Wake Lock** não é suportado em todos os navegadores (notadamente partes do iOS).
 - **Ditado por voz** depende da Web Speech API — ausente em alguns navegadores; o botão some quando não há suporte.
 - **Categoria automática** cobre produtos comuns; itens regionais ou de nicho caem em "Sem categoria".

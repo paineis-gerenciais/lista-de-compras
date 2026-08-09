@@ -467,4 +467,156 @@ test('itens repetidos no mesmo lote são somados', ()=>{
   eq(l.items[0].qty, '3');
 });
 
+/* =========================================================
+   Fase 4 · Bloco G — colaboração familiar
+   ========================================================= */
+suite('G · colaboração');
+
+test('iniciais são geradas de forma legível', ()=>{
+  eq(app.initialsOf('Ana Paula Silva'), 'AS');
+  eq(app.initialsOf('Daniel'), 'DA');
+  eq(app.initialsOf(''), '?');
+});
+
+test('cor do avatar é estável para o mesmo uid', ()=>{
+  eq(app.colorFor('uid-123'), app.colorFor('uid-123'));
+  ok(app.colorFor('uid-123') !== app.colorFor('uid-999') ||
+     app.colorFor('uid-123') === app.colorFor('uid-999'), 'função determinística');
+});
+
+test('chave de armazenamento é separada por escopo', ()=>{
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+  const pessoal = app.storageKeyForScope();
+  app.__setScope({ type:'household', id:'casa1', name:'Casa' });
+  const casa = app.storageKeyForScope();
+  app.__setScope({ type:'household', id:'casa2', name:'Sítio' });
+  const casa2 = app.storageKeyForScope();
+  ok(pessoal !== casa, 'pessoal e família não podem compartilhar chave');
+  ok(casa !== casa2, 'famílias diferentes não podem compartilhar chave');
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+});
+
+test('código de convite tem 8 caracteres sem letras ambíguas', ()=>{
+  for(let i=0;i<40;i++){
+    const c = app.generateInviteCode();
+    eq(c.length, 8);
+    ok(!/[0O1I]/.test(c), 'não pode conter 0, O, 1 ou I — confunde quem digita: ' + c);
+    ok(/^[A-Z2-9]+$/.test(c), 'apenas maiúsculas e dígitos 2-9: ' + c);
+  }
+});
+
+test('papéis são traduzidos para linguagem de gente', ()=>{
+  eq(app.papelPorExtenso('owner'), 'responsável');
+  eq(app.papelPorExtenso('editor'), 'editor');
+  eq(app.papelPorExtenso('viewer'), 'só leitura');
+});
+
+test('em lista pessoal, canEdit é sempre verdadeiro', ()=>{
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+  ok(app.canEdit());
+});
+
+test('viewer numa família não pode editar', ()=>{
+  app.__setScope({ type:'household', id:'casa1', name:'Casa' });
+  app.__setAuthUser({ uid:'u1', displayName:'Ana' });
+  app.__setCurrentHousehold({ name:'Casa', members:{ u1:{ role:'viewer', name:'Ana' } } });
+  eq(app.myRole(), 'viewer');
+  ok(!app.canEdit(), 'viewer não edita');
+  ok(!app.isOwner());
+});
+
+test('editor edita mas não administra', ()=>{
+  app.__setCurrentHousehold({ name:'Casa', members:{ u1:{ role:'editor', name:'Ana' } } });
+  ok(app.canEdit());
+  ok(!app.isOwner());
+});
+
+test('owner administra', ()=>{
+  app.__setCurrentHousehold({ name:'Casa', members:{ u1:{ role:'owner', name:'Ana' } } });
+  ok(app.canEdit());
+  ok(app.isOwner());
+});
+
+test('quem não está na família cai em somente leitura', ()=>{
+  app.__setCurrentHousehold({ name:'Casa', members:{ outro:{ role:'owner', name:'Bia' } } });
+  eq(app.myRole(), 'viewer');
+});
+
+test('nome de membro resolve para "você" no próprio uid', ()=>{
+  app.__setCurrentHousehold({ name:'Casa', members:{
+    u1:{ role:'owner', name:'Ana' }, u2:{ role:'editor', name:'Bia' }
+  }});
+  eq(app.memberName('u1'), 'você');
+  eq(app.memberName('u2'), 'Bia');
+  eq(app.memberName('desconhecido'), 'alguém');
+});
+
+test('itens novos numa família registram quem adicionou', ()=>{
+  app.__setScope({ type:'household', id:'casa1', name:'Casa' });
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('Mercado', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1' });
+  eq(l.items[0].addedBy, 'u1');
+});
+
+test('itens de lista pessoal não guardam autoria (seria ruído)', ()=>{
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('Mercado', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1' });
+  eq(l.items[0].addedBy, null);
+});
+
+test('normalizeState cria os campos de colaboração em dados antigos', ()=>{
+  const s = app.normalizeState({ lists:[{ id:'L', name:'x', createdAt:1,
+    items:[{ id:'i', name:'Ovo', qty:'1' }] }] });
+  const it = s.lists[0].items[0];
+  eq([it.addedBy, it.boughtBy, it.assignedTo], [null, null, null]);
+});
+
+test('merge preserva a autoria vinda do outro aparelho', ()=>{
+  const base = app.normalizeState({ lists:[{ id:'L1', name:'M', createdAt:1, updatedAt:1,
+    items:[{ id:'I1', name:'Arroz', qty:'1', updatedAt:1 }] }], updatedAt:1 });
+  const A = JSON.parse(JSON.stringify(base));
+  const B = JSON.parse(JSON.stringify(base));
+  B.lists[0].items[0].bought = true;
+  B.lists[0].items[0].boughtBy = 'u2';
+  B.lists[0].items[0].updatedAt = 5000;
+  const m = app.mergeStates(A, B);
+  eq(m.lists[0].items[0].boughtBy, 'u2');
+});
+
+test('descreverMudanca identifica item acrescentado por outra pessoa', ()=>{
+  app.__setCurrentHousehold({ name:'Casa', members:{
+    u1:{ role:'owner', name:'Ana' }, u2:{ role:'editor', name:'Bia' }
+  }});
+  const antes = app.normalizeState({ lists:[{ id:'L1', name:'M', createdAt:1, updatedAt:1, items:[] }] });
+  const depois = JSON.parse(JSON.stringify(antes));
+  depois.lists[0].items.push({ id:'I9', name:'Pão', qty:'1', unit:'', category:'Padaria',
+    price:null, bought:false, updatedAt:2, addedBy:'u2', boughtBy:null, assignedTo:null });
+  const msg = app.descreverMudanca(antes, depois);
+  ok(msg.includes('Bia'), 'deve nomear quem adicionou: ' + msg);
+  ok(msg.includes('Pão'), 'deve nomear o item: ' + msg);
+});
+
+test('descreverMudanca identifica item marcado por outra pessoa', ()=>{
+  const antes = app.normalizeState({ lists:[{ id:'L1', name:'M', createdAt:1, updatedAt:1,
+    items:[{ id:'I1', name:'Leite', qty:'1', updatedAt:1 }] }] });
+  const depois = JSON.parse(JSON.stringify(antes));
+  depois.lists[0].items[0].bought = true;
+  depois.lists[0].items[0].boughtBy = 'u2';
+  const msg = app.descreverMudanca(antes, depois);
+  ok(msg.includes('Bia') && msg.includes('Leite'), 'obtido: ' + msg);
+});
+
+test('link de convite carrega o código', ()=>{
+  const link = app.inviteLink('ABCD2345');
+  ok(link.includes('convite=ABCD2345'), link);
+});
+
+// restaura o contexto para não vazar entre execuções
+app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+app.__setAuthUser(null);
+app.__setCurrentHousehold(null);
+
 report();

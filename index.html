@@ -314,8 +314,15 @@
   @media (min-width:560px){ .modal-overlay{align-items:center;} }
   .modal{
     background:var(--paper); width:100%; max-width:480px;
-    border-radius:16px 16px 0 0; padding:20px 18px 24px; max-height:88vh; overflow-y:auto;
+    border-radius:16px 16px 0 0; padding:20px 18px 0; overflow-y:auto;
     box-shadow:0 -10px 30px rgba(0,0,0,0.2);
+    /* dvh acompanha a altura REAL da janela quando o teclado virtual abre.
+       Com vh, o modal continuava dimensionado para a tela inteira e os
+       botões do rodapé ficavam embaixo do teclado — visualmente presentes,
+       mas impossíveis de tocar. Era o bug de "os botões não funcionam". */
+    max-height:88vh;
+    max-height:88dvh;
+    overscroll-behavior:contain;
   }
   @media (min-width:560px){ .modal{border-radius:14px; margin:20px;} }
   .modal h2{
@@ -342,7 +349,17 @@
     border:1px solid var(--border); background:#fff; cursor:pointer; color:var(--ink-light);
   }
   .seg button.active{background:var(--ink); color:#fff; border-color:var(--ink);}
-  .modal-buttons{display:flex; gap:10px; margin-top:18px;}
+  /* Rodapé grudado no fim do modal: por mais que o conteúdo cresça (as
+     sugestões de recompra deixaram este modal bem mais alto), Cancelar e
+     Criar ficam sempre alcançáveis sem depender de rolagem. */
+  .modal-buttons{
+    display:flex; gap:10px; margin-top:18px;
+    position:sticky; bottom:0; z-index:2;
+    background:var(--paper);
+    padding:12px 0 calc(16px + env(safe-area-inset-bottom));
+    margin-left:-18px; margin-right:-18px; padding-left:18px; padding-right:18px;
+    border-top:1px solid var(--border);
+  }
   .modal-buttons button{
     flex:1; font-family:'Space Mono',monospace; font-weight:700; font-size:13px;
     padding:12px; border-radius:8px; cursor:pointer; border:1px solid var(--border);
@@ -591,6 +608,104 @@
     position:absolute; width:1px; height:1px; padding:0; margin:-1px;
     overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
   }
+
+  /* ================= FASE 4 · BLOCO G — colaboração ================= */
+
+  .scope-pill{
+    display:inline-flex; align-items:center; gap:7px; max-width:100%;
+    font-family:'Space Mono',monospace; font-size:11px; color:var(--ink);
+    border:1px solid var(--border); border-radius:99px; padding:4px 10px 4px 5px;
+    background:var(--card); cursor:pointer;
+  }
+  .scope-pill .sp-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;}
+  .scope-pill .sp-caret{color:var(--ink-light); font-size:9px;}
+
+  .avatar{
+    width:24px; height:24px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+    color:#fff; background:var(--ink-light); letter-spacing:0;
+    position:relative;
+  }
+  .avatar.sm{width:19px; height:19px; font-size:8.5px;}
+  .avatar.online::after{
+    content:''; position:absolute; right:-1px; bottom:-1px;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--green); border:1.5px solid var(--card);
+  }
+  .avatar-stack{display:flex; align-items:center;}
+  .avatar-stack .avatar + .avatar{margin-left:-7px; border:1.5px solid var(--card);}
+
+  .member-row{
+    display:flex; align-items:center; gap:11px; padding:11px 0;
+    border-bottom:1px dashed var(--border);
+  }
+  .member-row:last-child{border-bottom:none;}
+  .member-row .mr-info{flex:1; min-width:0;}
+  .member-row .mr-name{font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .member-row .mr-sub{font-size:11.5px; color:var(--ink-light); font-family:'Space Mono',monospace;}
+  .member-row select{
+    font-family:'Space Mono',monospace; font-size:11px; padding:5px 7px;
+    border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--ink);
+  }
+  .member-row .mr-remove{
+    background:none; border:none; color:var(--red); cursor:pointer; font-size:16px;
+    min-width:34px; min-height:34px;
+  }
+
+  .household-row{
+    display:flex; align-items:center; gap:11px; padding:12px; margin-bottom:8px;
+    border:1px solid var(--border); border-radius:10px; background:var(--card);
+    cursor:pointer; text-align:left; width:100%;
+  }
+  .household-row.active{border-color:var(--green); background:var(--green-light);}
+  .household-row .hr-info{flex:1; min-width:0;}
+  .household-row .hr-name{font-size:14px; font-weight:600;}
+  .household-row .hr-sub{font-size:11.5px; color:var(--ink-light); font-family:'Space Mono',monospace;}
+  .household-row .hr-check{color:var(--green); font-size:15px;}
+
+  .invite-box{
+    background:var(--amber-light); border:1px dashed var(--amber);
+    border-radius:10px; padding:14px; margin:6px 0 14px;
+  }
+  body.theme-dark .invite-box{background:#3a2f1c;}
+  .invite-box .ib-code{
+    font-family:'Space Mono',monospace; font-size:19px; font-weight:700;
+    letter-spacing:3px; text-align:center; padding:10px 0 4px; word-break:break-all;
+  }
+  .invite-box .ib-note{font-size:11.5px; color:var(--ink-light); text-align:center; line-height:1.5;}
+  .invite-actions{display:flex; gap:8px; margin-top:10px;}
+  .invite-actions button{
+    flex:1; font-family:'Space Mono',monospace; font-size:12px; font-weight:700;
+    padding:10px; border-radius:8px; cursor:pointer; min-height:42px;
+    border:1px solid var(--border); background:var(--card); color:var(--ink);
+  }
+
+  .role-badge{
+    font-family:'Space Mono',monospace; font-size:9.5px; text-transform:uppercase;
+    letter-spacing:0.5px; padding:2px 7px; border-radius:99px;
+    border:1px solid var(--border); color:var(--ink-light);
+  }
+  .role-badge.owner{background:var(--ink); color:var(--card); border-color:var(--ink);}
+  .role-badge.viewer{background:var(--amber-light); color:var(--amber); border-color:var(--amber);}
+
+  .item-tags{display:flex; align-items:center; gap:5px; margin-top:3px; flex-wrap:wrap;}
+  .item-tag{
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:'Space Mono',monospace; font-size:10px; color:var(--ink-light);
+    border:1px solid var(--border); border-radius:99px; padding:1px 7px 1px 3px;
+  }
+  .item-tag.mine{border-color:var(--green); color:var(--green);}
+
+  .presence-bar{
+    display:flex; align-items:center; gap:8px; padding:8px 0 2px;
+    font-family:'Space Mono',monospace; font-size:11px; color:var(--ink-light);
+  }
+  .viewer-note{
+    background:var(--amber-light); color:var(--ink); border-radius:8px;
+    padding:9px 12px; font-size:12px; margin:8px 0; line-height:1.45;
+  }
+  body.theme-dark .viewer-note{background:#3a2f1c;}
 </style>
 </head>
 <body>
@@ -622,6 +737,14 @@
       <span class="dot-ind" aria-hidden="true"></span><span id="syncPillText">só neste aparelho</span>
     </button>
   </div>
+  <div class="mode-row" id="scopeRow" style="display:none;">
+    <button class="scope-pill" id="scopePill" aria-label="Trocar entre minhas listas e famílias">
+      <span class="avatar sm" id="scopeAvatar">EU</span>
+      <span class="sp-name" id="scopeName">Minhas listas</span>
+      <span class="sp-caret" aria-hidden="true">▼</span>
+    </button>
+    <div class="avatar-stack" id="presenceStack" aria-label="Quem está com o app aberto"></div>
+  </div>
   <div class="tabs-row" id="tabsRow"></div>
 </header>
 
@@ -651,15 +774,17 @@ function emptyState(){
   };
 }
 
+/* G: cada escopo (pessoal ou família) tem sua própria chave local, para que
+   trocar de família não misture nem vaze dados de um contexto no outro. */
 async function loadData(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKeyForScope());
     if(raw) return JSON.parse(raw);
   }catch(e){ /* not found yet ou storage indisponível */ }
   return emptyState();
 }
 async function saveDataLocal(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  try{ localStorage.setItem(storageKeyForScope(), JSON.stringify(state)); }
   catch(e){ console.error('Erro ao salvar', e); showToast('Não foi possível salvar agora'); }
 }
 
@@ -668,12 +793,12 @@ async function saveDataLocal(){
 const BACKUP_MIN_INTERVAL = 10 * 60 * 1000;
 function writeRollingBackup(){
   try{
-    const raw = localStorage.getItem(BACKUP_KEY);
+    const raw = localStorage.getItem(BACKUP_KEY + ':' + scope.type + ':' + (scope.id || 'eu'));
     const backups = raw ? JSON.parse(raw) : [];
     const last = backups[0];
     if(last && (Date.now() - last.at) < BACKUP_MIN_INTERVAL) return;
     backups.unshift({ at: Date.now(), payload: JSON.stringify(state) });
-    localStorage.setItem(BACKUP_KEY, JSON.stringify(backups.slice(0,3)));
+    localStorage.setItem(BACKUP_KEY + ':' + scope.type + ':' + (scope.id || 'eu'), JSON.stringify(backups.slice(0,3)));
   }catch(e){ /* cota estourada: backup é melhor-esforço, nunca bloqueia o app */ }
 }
 
@@ -793,8 +918,12 @@ window.addEventListener('offline', ()=>{ if(authUser) setSyncStatus('offline'); 
 
 /* ---------- A1: o documento passa a ser o uid, nunca um texto digitado ---------- */
 function getDocRef(ownerId){
+  if(!db) return null;
+  if(!ownerId && scope.type === 'household' && scope.id){
+    return db.collection(HOUSEHOLD_COLLECTION).doc(scope.id);
+  }
   const id = ownerId || (authUser && authUser.uid);
-  if(!db || !id) return null;
+  if(!id) return null;
   return db.collection(COLLECTION_NAME).doc(id);
 }
 
@@ -809,9 +938,18 @@ function scheduleCloudSync(){
 async function pushToCloud(){
   const ref = getDocRef();
   if(!ref) return;
+  // G: quem só tem leitura não escreve. A regra de segurança também barra,
+  // mas errar aqui evita um erro de permissão a cada toque.
+  if(scope.type === 'household' && !canEdit()) return;
   if(syncStatus !== 'offline') setSyncStatus('syncing');
   try{
-    await ref.set({ state, updatedAt: state.updatedAt, schemaVersion: SCHEMA_VERSION }, { merge: false });
+    if(scope.type === 'household'){
+      // update parcial: o documento da família também guarda membros e
+      // convites, que não podem ser sobrescritos pelo estado das listas
+      await ref.update({ state, updatedAt: state.updatedAt, schemaVersion: SCHEMA_VERSION });
+    } else {
+      await ref.set({ state, updatedAt: state.updatedAt, schemaVersion: SCHEMA_VERSION }, { merge: false });
+    }
     setSyncStatus(navigator.onLine ? 'synced' : 'offline');
   }catch(e){
     console.error('Erro ao sincronizar (envio)', e);
@@ -940,22 +1078,44 @@ function startRealtimeSync(){
   unsubscribeSnapshot = ref.onSnapshot({ includeMetadataChanges: true }, (snap)=>{
     if(snap.metadata.fromCache && !navigator.onLine){ setSyncStatus('offline'); return; }
     if(!snap.exists){
+      if(scope.type === 'household'){
+        // a família foi excluída por outra pessoa
+        showToast('Esta família não existe mais');
+        switchScope({ type:'personal', id:null, name:'Minhas listas' });
+        return;
+      }
       pushToCloud();
       return;
     }
     if(snap.metadata.hasPendingWrites){ return; } // eco da própria escrita
     const data = snap.data();
+
+    // G: no documento de família vêm também os membros e o papel de cada um
+    if(scope.type === 'household'){
+      currentHousehold = data;
+      if(data.name && data.name !== scope.name){
+        scope.name = data.name;
+        const p = loadPrefs(); if(p.scope) p.scope.name = data.name; savePrefs(p);
+      }
+      applyScopeToHeader();
+    }
+
     if(!data || !data.state){ setSyncStatus('synced'); return; }
 
-    const merged = mergeStates(state, data.state);
+    const merged = mergeStates(state, normalizeState(data.state));
     const changed = JSON.stringify(merged) !== JSON.stringify(state);
     if(changed){
+      const antes = state;
       applyingRemoteUpdate = true;
       state = merged;
       saveDataLocal();
       writeRollingBackup();
       render();
-      showToast('Atualizado por outro aparelho');
+      if(scope.type === 'household'){
+        notifyRemoteChange(descreverMudanca(antes, merged));
+      } else {
+        showToast('Atualizado por outro aparelho');
+      }
       applyingRemoteUpdate = false;
       // se o merge produziu algo que a nuvem ainda não tem, devolve
       if(JSON.stringify(merged) !== JSON.stringify(data.state)) scheduleCloudSync();
@@ -1205,6 +1365,9 @@ function normalizeState(s){
       if(it.unit == null) it.unit = '';
       if(it.category == null) it.category = '';
       if(it.price === undefined) it.price = null;
+      if(it.addedBy === undefined) it.addedBy = null;
+      if(it.boughtBy === undefined) it.boughtBy = null;
+      if(it.assignedTo === undefined) it.assignedTo = null;
       it.bought = !!it.bought;
       if(!it.updatedAt) it.updatedAt = l.updatedAt;  // A4: itens antigos ganham carimbo
     });
@@ -1224,6 +1387,10 @@ async function init(){
   const prefs = loadPrefs();
   localOnly = !!prefs.localOnly;
   loadUiPrefs();
+  if(prefs.scope && prefs.scope.type === 'household' && prefs.scope.id){
+    scope = { type:'household', id: prefs.scope.id, name: prefs.scope.name || 'Família' };
+    state = normalizeState(await loadData());   // recarrega já na chave do escopo
+  }
 
   if(state.lists.length === 0){
     // primeira vez: cria uma lista de exemplo "Mercado"
@@ -1240,9 +1407,16 @@ async function init(){
 
   // atalho do manifest.json ("Nova lista" ao segurar o ícone do app)
   try{
-    if(new URLSearchParams(location.search).get('acao') === 'nova-lista'){
+    const qs = new URLSearchParams(location.search);
+    if(qs.get('acao') === 'nova-lista'){
       history.replaceState(null, '', location.pathname);
       openNewListModal();
+    }
+    // G: convite chegou pelo link. Guardamos porque o login pode vir antes.
+    const convite = qs.get('convite');
+    if(convite){
+      convitePendente = convite.trim().toUpperCase();
+      history.replaceState(null, '', location.pathname);
     }
   }catch(e){}
 
@@ -1262,11 +1436,20 @@ async function init(){
       hideAuthScreen();
       setSyncStatus('syncing');
       await migrateLegacyIfNeeded();
+      watchMyHouseholds();                       // G
       startRealtimeSync();
+      if(scope.type === 'household') startPresence();
+      applyScopeToHeader();
       render();
       trackEvent('session_start');
+      await tratarConviteDaUrl();                // G
     } else {
       stopRealtimeSync();
+      stopPresence();
+      if(unsubHouseholds){ unsubHouseholds(); unsubHouseholds = null; }
+      myHouseholds = []; currentHousehold = null;
+      scope = { type:'personal', id:null, name:'Minhas listas' };
+      applyScopeToHeader();
       if(localOnly){ hideAuthScreen(); setSyncStatus('local'); }
       else renderAuthScreen('login');
       render();
@@ -1290,7 +1473,11 @@ function createListObject(name, recurring, frequencyDays, baseName){
 function makeItem(fields){
   return Object.assign({
     id: uid(), name:'', qty:'1', unit:'', category:'', price:null, bought:false,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
+    // G: autoria. Em listas pessoais fica nulo e não aparece em lugar nenhum.
+    addedBy: (scope.type === 'household' ? myUid() : null),
+    boughtBy: null,
+    assignedTo: null
   }, fields || {});
 }
 
@@ -1306,6 +1493,7 @@ function render(){
   themeBtn.style.display = isFull ? 'flex' : 'none';
   themeBtn.textContent = state.theme === 'dark' ? '☀️' : '🌙';
   document.querySelectorAll('.shop-foot').forEach(el=> el.remove());
+  applyScopeToHeader();
   if(shopMode.active){
     renderShopMode();
     return;
@@ -1380,6 +1568,10 @@ function renderMain(){
     </div>
     ${isFull ? `<div class="total-row">Total estimado: <strong>${formatPrice(totalEstimate)}</strong></div>` : ''}
     ${isFull ? `<div class="search-row"><input type="text" id="searchInput" placeholder="Buscar item na lista..." aria-label="Buscar item na lista"></div>` : ''}
+    ${scope.type === 'household' && !canEdit()
+      ? '<div class="viewer-note">Você tem acesso <strong>somente leitura</strong> nesta família. Dá para acompanhar tudo, mas não alterar. Peça ao responsável para mudar sua permissão.</div>'
+      : ''}
+    ${scope.type === 'household' ? '<div class="presence-bar" id="presenceNote" aria-live="polite"></div>' : ''}
     <div class="list-tools">
       <button type="button" id="toggleBoughtBtn" class="${uiPrefs.hideBought ? 'on' : ''}" aria-pressed="${uiPrefs.hideBought ? 'true' : 'false'}">
         ${uiPrefs.hideBought ? '☑ comprados ocultos' : '☐ ocultar comprados'}
@@ -1389,7 +1581,7 @@ function renderMain(){
     ${isFull ? `<div class="cat-chip-row" id="favChipRow"></div>` : ''}
     <div id="categoriesArea"></div>
 
-    <div class="quick-add">
+    <div class="quick-add" ${scope.type === 'household' && !canEdit() ? 'style="display:none;"' : ''}>
       <input type="text" id="quickAddInput" placeholder="2kg tomate" aria-label="Adicionar item rapidamente"${isFull ? ' list="itemNamesDatalist"' : ''} autocomplete="off" enterkeyhint="done">
       <button type="button" class="qa-icon" id="quickMicBtn" title="Ditar itens" aria-label="Ditar itens por voz">🎤</button>
       <button type="button" class="qa-icon go" id="quickAddBtn" aria-label="Adicionar item">+</button>
@@ -1591,7 +1783,18 @@ function renderMain(){
   document.getElementById('fabAdd').onclick = ()=>{
     const q = document.getElementById('quickAddInput');
     if(q){ q.scrollIntoView({behavior:'smooth', block:'center'}); q.focus(); }
+    else showToast('Você tem acesso somente leitura nesta família');
   };
+  atualizarNotaDePresenca();
+}
+
+function atualizarNotaDePresenca(){
+  const bar = document.getElementById('presenceNote');
+  if(!bar) return;
+  const comprando = presenceOnline.filter(p=> p.shopping && p.uid !== myUid());
+  bar.textContent = comprando.length
+    ? `${comprando.map(p=>p.name).join(' e ')} ${comprando.length>1?'estão':'está'} no mercado agora`
+    : '';
 }
 
 function applySearchFilter(query){
@@ -1627,6 +1830,7 @@ function renderItemRow(item, list, isFull, siblings, idxInGroup){
         <span class="item-name">${escapeHtml(item.name)}</span>
       </div>
       ${showPrice ? `<div class="item-price">${formatPrice(item.price)}</div>` : ''}
+      ${itemTagsHtml(item)}
     </div>
     <span class="item-qty">${qtyDisplay}</span>
     ${isFull ? `
@@ -1636,11 +1840,14 @@ function renderItemRow(item, list, isFull, siblings, idxInGroup){
       </span>
       <span class="drag-handle" aria-hidden="true" title="Arraste para reordenar">⠿</span>
       <button class="item-edit" aria-label="Editar ${escapeHtml(item.name)}">✎</button>
+      ${scope.type === 'household' ? `<button class="item-edit item-assign" aria-label="Definir quem pega ${escapeHtml(item.name)}">👤</button>` : ''}
     ` : ''}
     <button class="item-del" aria-label="Remover ${escapeHtml(item.name)}">&times;</button>
   `;
   const toggle = ()=>{
+    if(!canEdit()){ showToast('Você tem acesso somente leitura nesta família'); return; }
     item.bought = !item.bought;
+    item.boughtBy = item.bought ? (scope.type === 'household' ? myUid() : null) : null;
     touch(item); touchList(list);
     if(item.bought) trackEvent('item_checked');
     saveData(); render();
@@ -1651,6 +1858,7 @@ function renderItemRow(item, list, isFull, siblings, idxInGroup){
      dá 6 segundos de "desfazer" — mais rápido de acertar e de errar sem custo. */
   row.querySelector('.item-del').onclick = (e)=>{
     e.stopPropagation();
+    if(!canEdit()){ showToast('Você tem acesso somente leitura nesta família'); return; }
     const position = list.items.findIndex(i=>i.id === item.id);
     const removed = list.items[position];
     list.items = list.items.filter(i=>i.id !== item.id);
@@ -1667,6 +1875,8 @@ function renderItemRow(item, list, isFull, siblings, idxInGroup){
   };
   if(isFull){
     row.querySelector('.item-edit').onclick = (e)=>{ e.stopPropagation(); openEditItemModal(item, list); };
+    const assignBtn = row.querySelector('.item-assign');
+    if(assignBtn) assignBtn.onclick = (e)=>{ e.stopPropagation(); openAssignModal(item, list); };
     row.querySelector('.drag-handle').addEventListener('pointerdown', (e)=> startItemDrag(e, row, list));
     row.querySelector('.ro-up').onclick = (e)=>{ e.stopPropagation(); moveItemWithinGroup(list, item, siblings, -1); };
     row.querySelector('.ro-down').onclick = (e)=>{ e.stopPropagation(); moveItemWithinGroup(list, item, siblings, 1); };
@@ -1680,6 +1890,23 @@ function renderItemRow(item, list, isFull, siblings, idxInGroup){
     });
   }
   return row;
+}
+
+/* G: etiquetas de autoria. Só existem no contexto de família — em lista
+   pessoal seriam ruído puro ("adicionado por você" em 100% dos itens). */
+function itemTagsHtml(item){
+  if(scope.type !== 'household') return '';
+  const tags = [];
+  if(item.assignedTo){
+    const nome = memberName(item.assignedTo);
+    const mine = item.assignedTo === myUid();
+    tags.push(`<span class="item-tag ${mine ? 'mine' : ''}">${avatarHtml(item.assignedTo, nome === 'você' ? myDisplayName() : nome, 'sm')}${mine ? 'você pega' : escapeHtml(nome)}</span>`);
+  }
+  if(item.bought && item.boughtBy && item.boughtBy !== myUid()){
+    tags.push(`<span class="item-tag">${escapeHtml(memberName(item.boughtBy))} pegou</span>`);
+  }
+  if(!tags.length) return '';
+  return `<div class="item-tags">${tags.join('')}</div>`;
 }
 
 /* D1: reordenação sem arrastar — funciona com teclado e com leitor de tela,
@@ -1974,8 +2201,10 @@ function openNewListModal(prefillItems){
     render();
     showToast('Lista criada');
   };
-  overlay.querySelector('#nlName').focus();
+  focusIfNotTouch(overlay.querySelector('#nlName'));
+  wireModalDismiss(overlay);
 }
+document.getElementById('scopePill').onclick = ()=> openHouseholdsModal();
 document.getElementById('newListBtn').onclick = ()=> openNewListModal();
 document.getElementById('historyBtn').onclick = ()=> openFinishedModal();
 document.getElementById('syncBtn').onclick = ()=> openSyncModal();
@@ -2997,6 +3226,7 @@ const shopMode = { active:false, listId:null, wakeLock:null };
 async function enterShopMode(list){
   shopMode.active = true;
   shopMode.listId = list.id;
+  if(scope.type === 'household') startPresence();   // republica com shopping:true
   trackEvent('shop_mode_start', { itens: list.items.length });
   render();
   window.scrollTo(0,0);
@@ -3005,6 +3235,7 @@ async function enterShopMode(list){
 async function exitShopMode(){
   shopMode.active = false;
   shopMode.listId = null;
+  if(scope.type === 'household') startPresence();
   await releaseWakeLock();
   render();
 }
@@ -3034,9 +3265,10 @@ function renderShopMode(){
 
   const bar = document.createElement('div');
   bar.className = 'shop-bar';
+  const junto = presenceOnline.filter(p=> p.shopping && p.uid !== myUid());
   bar.innerHTML = `
     <button id="smExit" aria-label="Sair do modo compra">← Sair</button>
-    <h2>${escapeHtml(list.name)}</h2>
+    <h2>${escapeHtml(list.name)}${junto.length ? ' · com ' + escapeHtml(junto.map(p=>p.name).join(', ')) : ''}</h2>
     <button id="smHide" aria-pressed="${uiPrefs.hideBought ? 'true':'false'}">${uiPrefs.hideBought ? 'Mostrar todos' : 'Ocultar pegos'}</button>`;
   main.appendChild(bar);
 
@@ -3211,7 +3443,7 @@ function importBackup(){
 
 function openRestoreBackupModal(){
   let backups = [];
-  try{ backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); }catch(e){}
+  try{ backups = JSON.parse(localStorage.getItem(BACKUP_KEY + ':' + scope.type + ':' + (scope.id || 'eu')) || '[]'); }catch(e){}
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   const body = backups.length === 0
@@ -3339,6 +3571,754 @@ function maybeShowInstallBanner(){
     try{ await deferredInstall.userChoice; }catch(e){}
     deferredInstall = null;
   };
+}
+
+/* ===================================================================
+   FASE 4 · BLOCO G — COLABORAÇÃO FAMILIAR
+   ===================================================================
+
+   O caso de uso que motiva tudo aqui: duas pessoas no mesmo mercado, ou
+   uma no corredor e outra em casa lembrando do que falta. Sem isso, a
+   sincronização da Fase 3 resolve "meus aparelhos" mas não resolve
+   "minha família".
+
+   MODELO DE DADOS
+   ---------------
+   households/{hid}
+     { name, ownerUid, createdAt, updatedAt,
+       memberUids: [uid,...],        // para consultar "de quais famílias faço parte"
+       members: { uid: {role, name, joinedAt} },
+       state: { ...mesmo formato do estado pessoal... } }
+
+   householdInvites/{code}
+     { householdId, role, createdBy, createdAt, expiresAt }
+
+   households/{hid}/presence/{uid}
+     { name, lastSeen, shopping }
+
+   O `state` compartilhado usa exatamente o mesmo formato do pessoal, então
+   mergeStates(), o modo compra, o parser e tudo o mais funcionam sem
+   alteração. O documento único por família herda a mesma limitação do
+   documento único por usuário — a granularidade real vem no bloco F.
+
+   PAPÉIS
+   ------
+   owner  — tudo, inclusive convidar, mudar papéis e excluir a família
+   editor — mexer nas listas
+   viewer — só ler (útil para quem só quer acompanhar o que falta)
+*/
+
+let convitePendente = null;
+
+/* Convite recebido por link: se a pessoa ainda não estava logada, o código
+   fica guardado e é consumido assim que a sessão existir. */
+async function tratarConviteDaUrl(){
+  if(!convitePendente || !authUser) return;
+  const code = convitePendente;
+  convitePendente = null;
+  openJoinHouseholdModal(code);
+}
+
+const HOUSEHOLD_COLLECTION = 'households';
+const INVITE_COLLECTION = 'householdInvites';
+const PRESENCE_TTL = 90 * 1000;          // após 90s sem sinal, a pessoa sai do "online"
+const PRESENCE_HEARTBEAT = 30 * 1000;
+
+let scope = { type: 'personal', id: null, name: 'Minhas listas' };
+let myHouseholds = [];                   // [{id, name, role, memberCount}]
+let currentHousehold = null;             // documento completo quando scope.type==='household'
+let unsubHouseholds = null;
+let unsubPresence = null;
+let presenceTimer = null;
+let presenceOnline = [];                 // [{uid, name, lastSeen, shopping}]
+
+/* ---------- identidade e papéis ---------- */
+function myUid(){ return authUser && authUser.uid; }
+function myDisplayName(){
+  if(!authUser) return 'Você';
+  return authUser.displayName || (authUser.email ? authUser.email.split('@')[0] : 'Você');
+}
+function myRole(){
+  if(scope.type !== 'household') return 'owner';
+  if(!currentHousehold || !currentHousehold.members) return 'viewer';
+  const m = currentHousehold.members[myUid()];
+  return m ? m.role : 'viewer';
+}
+function canEdit(){ return myRole() !== 'viewer'; }
+function isOwner(){ return myRole() === 'owner'; }
+
+function memberName(uid){
+  if(!uid) return '';
+  if(uid === myUid()) return 'você';
+  if(currentHousehold && currentHousehold.members && currentHousehold.members[uid]){
+    return currentHousehold.members[uid].name || 'membro';
+  }
+  return 'alguém';
+}
+function initialsOf(name){
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '?';
+  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+/* Cor derivada do uid: estável entre aparelhos, sem precisar guardar nada. */
+function colorFor(uid){
+  const palette = ['#3F6B4A','#B5651D','#5B6E8C','#8C5B6E','#6E8C5B','#8C7A5B','#5B8C86','#7A5B8C'];
+  let h = 0;
+  String(uid || '').split('').forEach(c=>{ h = (h * 31 + c.charCodeAt(0)) >>> 0; });
+  return palette[h % palette.length];
+}
+function avatarHtml(uid, name, extraClass){
+  const online = presenceOnline.some(p=> p.uid === uid);
+  return `<span class="avatar ${extraClass || ''} ${online ? 'online' : ''}"
+    style="background:${colorFor(uid)}" title="${escapeHtml(name || '')}">${escapeHtml(initialsOf(name))}</span>`;
+}
+
+/* ---------- alternância de escopo ---------- */
+function applyScopeToHeader(){
+  const row = document.getElementById('scopeRow');
+  if(!row) return;
+  if(!authUser){ row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  const av = document.getElementById('scopeAvatar');
+  const nm = document.getElementById('scopeName');
+  if(scope.type === 'household'){
+    nm.textContent = scope.name || 'Família';
+    av.textContent = initialsOf(scope.name || 'Família');
+    av.style.background = colorFor(scope.id);
+  } else {
+    nm.textContent = 'Minhas listas';
+    av.textContent = initialsOf(myDisplayName());
+    av.style.background = colorFor(myUid());
+  }
+  renderPresenceStack();
+}
+
+function renderPresenceStack(){
+  const stack = document.getElementById('presenceStack');
+  if(!stack) return;
+  if(scope.type !== 'household' || presenceOnline.length <= 1){ stack.innerHTML = ''; return; }
+  stack.innerHTML = presenceOnline
+    .filter(p=> p.uid !== myUid())
+    .slice(0, 4)
+    .map(p=> avatarHtml(p.uid, p.name, 'sm'))
+    .join('');
+  stack.title = presenceOnline.filter(p=>p.uid!==myUid()).map(p=>p.name).join(', ') + ' com o app aberto';
+}
+
+async function switchScope(newScope){
+  stopPresence();
+  scope = newScope;
+  const p = loadPrefs();
+  p.scope = { type: newScope.type, id: newScope.id, name: newScope.name };
+  savePrefs(p);
+
+  // cada escopo tem seu próprio estado local, para o pessoal não se misturar
+  // com o da família nem vazar de um para o outro ao trocar
+  state = normalizeState(await loadData());
+  currentHousehold = null;
+  render();
+  applyScopeToHeader();
+  startRealtimeSync();
+  if(newScope.type === 'household') startPresence();
+  trackEvent('scope_switch', { tipo: newScope.type });
+}
+
+/* Cada escopo grava numa chave própria do localStorage. */
+function storageKeyForScope(){
+  return scope.type === 'household' ? STORAGE_KEY + ':casa:' + scope.id : STORAGE_KEY;
+}
+
+/* ---------- lista de famílias do usuário ---------- */
+function watchMyHouseholds(){
+  if(unsubHouseholds){ unsubHouseholds(); unsubHouseholds = null; }
+  if(!db || !authUser) return;
+  unsubHouseholds = db.collection(HOUSEHOLD_COLLECTION)
+    .where('memberUids', 'array-contains', myUid())
+    .onSnapshot(snap=>{
+      myHouseholds = snap.docs.map(d=>{
+        const data = d.data();
+        const me = (data.members || {})[myUid()] || {};
+        return {
+          id: d.id, name: data.name || 'Família',
+          role: me.role || 'viewer',
+          memberCount: (data.memberUids || []).length
+        };
+      });
+      // se a pessoa foi removida da família que está aberta, volta para o pessoal
+      if(scope.type === 'household' && !myHouseholds.find(h=> h.id === scope.id)){
+        showToast('Você não faz mais parte dessa família');
+        switchScope({ type:'personal', id:null, name:'Minhas listas' });
+      }
+      applyScopeToHeader();
+    }, err=> console.warn('Erro ao observar famílias', err));
+}
+
+/* ---------- criar família ---------- */
+async function createHousehold(name){
+  if(!db || !authUser) return null;
+  const uid = myUid();
+  const ref = db.collection(HOUSEHOLD_COLLECTION).doc();
+  const payload = {
+    name: name,
+    ownerUid: uid,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    memberUids: [uid],
+    members: { [uid]: { role:'owner', name: myDisplayName(), joinedAt: Date.now() } },
+    state: normalizeState(null)
+  };
+  await ref.set(payload);
+  trackEvent('household_created');
+  return { id: ref.id, name };
+}
+
+/* ---------- convites ---------- */
+function generateInviteCode(){
+  // sem 0/O/1/I para não confundir quem digita à mão
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  const arr = new Uint32Array(8);
+  (window.crypto || window.msCrypto).getRandomValues(arr);
+  for(let i=0;i<8;i++) out += alphabet[arr[i] % alphabet.length];
+  return out;
+}
+
+async function createInvite(householdId, role, dias){
+  const code = generateInviteCode();
+  await db.collection(INVITE_COLLECTION).doc(code).set({
+    householdId, role: role || 'editor',
+    createdBy: myUid(), createdAt: Date.now(),
+    expiresAt: Date.now() + (dias || 7) * 86400000
+  });
+  trackEvent('invite_created');
+  return code;
+}
+
+function inviteLink(code){
+  return location.origin + location.pathname + '?convite=' + code;
+}
+
+/* Entrar numa família a partir de um código. O cliente lê o convite, e as
+   regras de segurança conferem por conta própria: o servidor só aceita a
+   auto-inclusão se o convite existir, não tiver expirado e o papel bater. */
+async function joinHousehold(code){
+  if(!db || !authUser) return { ok:false, erro:'Você precisa estar logado.' };
+  const clean = String(code || '').trim().toUpperCase();
+  if(!clean) return { ok:false, erro:'Código vazio.' };
+  try{
+    const invSnap = await db.collection(INVITE_COLLECTION).doc(clean).get();
+    if(!invSnap.exists) return { ok:false, erro:'Convite não encontrado. Confira o código.' };
+    const inv = invSnap.data();
+    if((inv.expiresAt || 0) < Date.now()) return { ok:false, erro:'Este convite expirou. Peça um novo.' };
+
+    const hRef = db.collection(HOUSEHOLD_COLLECTION).doc(inv.householdId);
+    const uid = myUid();
+    await hRef.update({
+      memberUids: firebase.firestore.FieldValue.arrayUnion(uid),
+      ['members.' + uid]: {
+        role: inv.role, name: myDisplayName(), joinedAt: Date.now(), inviteCode: clean
+      },
+      updatedAt: Date.now()
+    });
+    const hSnap = await hRef.get();
+    trackEvent('household_joined');
+    return { ok:true, id: inv.householdId, name: (hSnap.data() || {}).name || 'Família' };
+  }catch(e){
+    console.error('Erro ao entrar na família', e);
+    if(e.code === 'permission-denied') return { ok:false, erro:'O convite não é mais válido.' };
+    return { ok:false, erro:'Não foi possível entrar agora. Tente de novo.' };
+  }
+}
+
+/* ---------- presença ---------- */
+function startPresence(){
+  stopPresence();
+  if(!db || !authUser || scope.type !== 'household') return;
+  const col = db.collection(HOUSEHOLD_COLLECTION).doc(scope.id).collection('presence');
+
+  const beat = async ()=>{
+    if(document.hidden) return;
+    try{
+      await col.doc(myUid()).set({
+        name: myDisplayName(), lastSeen: Date.now(), shopping: !!shopMode.active
+      });
+    }catch(e){ /* presença é enfeite: nunca pode atrapalhar o uso */ }
+  };
+  beat();
+  presenceTimer = setInterval(beat, PRESENCE_HEARTBEAT);
+
+  unsubPresence = col.onSnapshot(snap=>{
+    const agora = Date.now();
+    presenceOnline = snap.docs
+      .map(d=> Object.assign({ uid: d.id }, d.data()))
+      .filter(p=> (agora - (p.lastSeen || 0)) < PRESENCE_TTL);
+    renderPresenceStack();
+    const comprando = presenceOnline.filter(p=> p.shopping && p.uid !== myUid());
+    const bar = document.getElementById('presenceNote');
+    if(bar){
+      bar.textContent = comprando.length
+        ? `${comprando.map(p=>p.name).join(' e ')} ${comprando.length>1?'estão':'está'} no mercado agora`
+        : '';
+    }
+  }, err=> console.warn('Erro na presença', err));
+}
+
+function stopPresence(){
+  if(presenceTimer){ clearInterval(presenceTimer); presenceTimer = null; }
+  if(unsubPresence){ unsubPresence(); unsubPresence = null; }
+  presenceOnline = [];
+  renderPresenceStack();
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && scope.type === 'household' && authUser) startPresence();
+});
+
+/* ---------- notificação de alteração remota ----------
+   Push de verdade (FCM) exige uma Cloud Function para enviar — não dá para
+   fazer só no cliente. O que dá para fazer sem servidor, e que já cobre o
+   caso real ("alguém acrescentou item enquanto eu estava no mercado"), é
+   notificar quando o app está aberto em segundo plano. O push completo fica
+   registrado como pendência do bloco J. */
+function notifyRemoteChange(resumo){
+  if(document.visibilityState === 'visible'){ showToast(resumo); return; }
+  if(!('Notification' in window) || Notification.permission !== 'granted'){ return; }
+  try{
+    new Notification('Lista de Compras', { body: resumo, tag: 'lista-mudou', icon: './icon-192.png' });
+  }catch(e){ /* alguns navegadores exigem o service worker; silencioso de propósito */ }
+}
+
+async function pedirPermissaoNotificacao(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const r = await Notification.requestPermission();
+  return r === 'granted';
+}
+
+/* Compara dois estados e descreve a diferença em uma frase. */
+function descreverMudanca(antes, depois){
+  const conta = (s)=> (s.lists || []).reduce((n,l)=> n + (l.items||[]).length, 0);
+  const nAntes = conta(antes), nDepois = conta(depois);
+  if(nDepois > nAntes){
+    const idsAntes = new Set();
+    (antes.lists||[]).forEach(l=> (l.items||[]).forEach(i=> idsAntes.add(i.id)));
+    const novos = [];
+    (depois.lists||[]).forEach(l=> (l.items||[]).forEach(i=>{ if(!idsAntes.has(i.id)) novos.push(i); }));
+    if(novos.length === 1){
+      const quem = memberName(novos[0].addedBy);
+      return `${quem === 'você' ? 'Alguém' : quem} adicionou "${novos[0].name}"`;
+    }
+    if(novos.length > 1) return `${novos.length} itens adicionados`;
+  }
+  if(nDepois < nAntes) return 'Itens removidos da lista';
+  // marcações
+  const boughtAntes = {}, boughtDepois = {};
+  (antes.lists||[]).forEach(l=> (l.items||[]).forEach(i=> boughtAntes[i.id] = i.bought));
+  let marcado = null;
+  (depois.lists||[]).forEach(l=> (l.items||[]).forEach(i=>{
+    if(i.bought && !boughtAntes[i.id]) marcado = i;
+  }));
+  if(marcado){
+    const quem = memberName(marcado.boughtBy);
+    return `${quem === 'você' ? 'Alguém' : quem} pegou "${marcado.name}"`;
+  }
+  return 'Lista atualizada';
+}
+
+/* ---------- modal: famílias ---------- */
+function openHouseholdsModal(){
+  if(!authUser){
+    showToast('Entre com uma conta para compartilhar listas');
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const linhas = myHouseholds.map(h=>`
+    <button class="household-row ${scope.type==='household' && scope.id===h.id ? 'active':''}" data-hid="${h.id}">
+      <span class="avatar" style="background:${colorFor(h.id)}">${escapeHtml(initialsOf(h.name))}</span>
+      <span class="hr-info">
+        <span class="hr-name">${escapeHtml(h.name)}</span>
+        <span class="hr-sub">${h.memberCount} ${h.memberCount===1?'pessoa':'pessoas'} · você é ${papelPorExtenso(h.role)}</span>
+      </span>
+      ${scope.type==='household' && scope.id===h.id ? '<span class="hr-check">✓</span>' : ''}
+    </button>`).join('');
+
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Listas compartilhadas</h2>
+      <p class="sub">Uma família tem suas próprias listas, visíveis para todo mundo que participa. Suas listas pessoais continuam separadas.</p>
+
+      <button class="household-row ${scope.type==='personal' ? 'active':''}" data-hid="__personal__">
+        <span class="avatar" style="background:${colorFor(myUid())}">${escapeHtml(initialsOf(myDisplayName()))}</span>
+        <span class="hr-info">
+          <span class="hr-name">Minhas listas</span>
+          <span class="hr-sub">só você</span>
+        </span>
+        ${scope.type==='personal' ? '<span class="hr-check">✓</span>' : ''}
+      </button>
+      ${linhas}
+
+      <div class="map-options" style="margin-top:14px;">
+        <button class="map-option-btn" id="hmCreate">
+          <span class="moi">👨‍👩‍👧</span>
+          <span class="mot"><strong>Criar uma família</strong><span>Listas compartilhadas com quem você convidar</span></span>
+        </button>
+        <button class="map-option-btn" id="hmJoin">
+          <span class="moi">🔑</span>
+          <span class="mot"><strong>Entrar com um convite</strong><span>Se alguém te mandou um código ou link</span></span>
+        </button>
+        ${scope.type==='household' ? `
+        <button class="map-option-btn" id="hmManage">
+          <span class="moi">⚙️</span>
+          <span class="mot"><strong>Gerenciar "${escapeHtml(scope.name)}"</strong><span>Membros, convites e permissões</span></span>
+        </button>` : ''}
+      </div>
+
+      <div class="modal-buttons"><button id="hmClose">Fechar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = wireModalDismiss(overlay);
+
+  overlay.querySelectorAll('[data-hid]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const hid = btn.dataset.hid;
+      close();
+      if(hid === '__personal__'){
+        if(scope.type !== 'personal') switchScope({ type:'personal', id:null, name:'Minhas listas' });
+      } else {
+        const h = myHouseholds.find(x=> x.id === hid);
+        if(h && scope.id !== hid) switchScope({ type:'household', id:h.id, name:h.name });
+      }
+    };
+  });
+  overlay.querySelector('#hmClose').onclick = close;
+  if(scope.type === 'household' && 'Notification' in window && Notification.permission === 'default'){
+    const aviso = document.createElement('button');
+    aviso.className = 'auth-link';
+    aviso.textContent = 'Avisar quando alguém mexer na lista';
+    aviso.onclick = async ()=>{
+      const ok = await pedirPermissaoNotificacao();
+      showToast(ok ? 'Avisos ativados' : 'Avisos não permitidos pelo navegador');
+      aviso.remove();
+    };
+    overlay.querySelector('.modal-buttons').before(aviso);
+  }
+  overlay.querySelector('#hmCreate').onclick = ()=>{ close(); openCreateHouseholdModal(); };
+  overlay.querySelector('#hmJoin').onclick = ()=>{ close(); openJoinHouseholdModal(); };
+  const mg = overlay.querySelector('#hmManage');
+  if(mg) mg.onclick = ()=>{ close(); openManageHouseholdModal(); };
+}
+
+function papelPorExtenso(role){
+  return { owner:'responsável', editor:'editor', viewer:'só leitura' }[role] || role;
+}
+
+function openCreateHouseholdModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Criar família</h2>
+      <p class="sub">Dê um nome. Depois você convida quem quiser, e todo mundo enxerga e edita as mesmas listas em tempo real.</p>
+      <div class="field">
+        <label for="chName">Nome</label>
+        <input type="text" id="chName" placeholder="Ex: Casa, Família Silva, República">
+      </div>
+      <div class="modal-buttons">
+        <button id="chCancel">Cancelar</button>
+        <button class="primary" id="chCreate">Criar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = wireModalDismiss(overlay);
+  overlay.querySelector('#chCancel').onclick = close;
+  overlay.querySelector('#chCreate').onclick = async ()=>{
+    const nome = overlay.querySelector('#chName').value.trim();
+    if(!nome){ overlay.querySelector('#chName').focus(); return; }
+    const btn = overlay.querySelector('#chCreate');
+    btn.disabled = true; btn.textContent = 'Criando...';
+    try{
+      const h = await createHousehold(nome);
+      close();
+      await switchScope({ type:'household', id:h.id, name:h.name });
+      showToast('Família criada');
+      openManageHouseholdModal();
+    }catch(e){
+      console.error(e);
+      btn.disabled = false; btn.textContent = 'Criar';
+      showToast('Não foi possível criar agora');
+    }
+  };
+  focusIfNotTouch(overlay.querySelector('#chName'));
+}
+
+function openJoinHouseholdModal(codigoPrevio){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Entrar numa família</h2>
+      <p class="sub">Cole o código de 8 letras que te enviaram, ou abra o link do convite direto no navegador.</p>
+      <div class="field">
+        <label for="jhCode">Código do convite</label>
+        <input type="text" id="jhCode" placeholder="ABCD2345" maxlength="8"
+          style="text-transform:uppercase; letter-spacing:3px; font-family:'Space Mono',monospace;"
+          value="${escapeHtml(codigoPrevio || '')}">
+      </div>
+      <p class="auth-err" id="jhErr" style="display:none;" role="alert"></p>
+      <div class="modal-buttons">
+        <button id="jhCancel">Cancelar</button>
+        <button class="primary" id="jhGo">Entrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = wireModalDismiss(overlay);
+  const err = overlay.querySelector('#jhErr');
+  overlay.querySelector('#jhCancel').onclick = close;
+  overlay.querySelector('#jhGo').onclick = async ()=>{
+    const btn = overlay.querySelector('#jhGo');
+    btn.disabled = true; btn.textContent = 'Entrando...';
+    err.style.display = 'none';
+    const r = await joinHousehold(overlay.querySelector('#jhCode').value);
+    if(r.ok){
+      close();
+      await switchScope({ type:'household', id:r.id, name:r.name });
+      showToast('Você entrou em ' + r.name);
+    } else {
+      err.textContent = r.erro;
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Entrar';
+    }
+  };
+  focusIfNotTouch(overlay.querySelector('#jhCode'));
+}
+
+function openManageHouseholdModal(){
+  if(scope.type !== 'household' || !currentHousehold){
+    showToast('Abra uma família primeiro');
+    return;
+  }
+  const membros = Object.keys(currentHousehold.members || {}).map(uid=>
+    Object.assign({ uid }, currentHousehold.members[uid])
+  ).sort((a,b)=> (a.joinedAt||0) - (b.joinedAt||0));
+  const souDono = isOwner();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>${escapeHtml(currentHousehold.name || 'Família')}</h2>
+      <p class="sub">${membros.length} ${membros.length===1?'pessoa':'pessoas'}. ${souDono
+        ? 'Como responsável, você convida, muda permissões e remove pessoas.'
+        : 'Só o responsável pode convidar e mudar permissões.'}</p>
+
+      <div id="inviteArea"></div>
+
+      ${souDono ? `
+        <div class="map-options">
+          <button class="map-option-btn" id="mhInvite">
+            <span class="moi">✉️</span>
+            <span class="mot"><strong>Convidar alguém</strong><span>Gera um código e um link válidos por 7 dias</span></span>
+          </button>
+        </div>` : ''}
+
+      <label style="display:block; font-size:12px; font-weight:600; color:var(--ink-light); margin:16px 0 2px; text-transform:uppercase; letter-spacing:0.4px;">Membros</label>
+      <div id="membrosArea">
+        ${membros.map(m=>`
+          <div class="member-row" data-uid="${m.uid}">
+            ${avatarHtml(m.uid, m.name)}
+            <span class="mr-info">
+              <span class="mr-name">${escapeHtml(m.name || 'membro')}${m.uid===myUid()?' (você)':''}</span>
+              <span class="mr-sub">${presenceOnline.some(p=>p.uid===m.uid) ? 'online agora' : 'entrou em ' + new Date(m.joinedAt||Date.now()).toLocaleDateString('pt-BR')}</span>
+            </span>
+            ${(souDono && m.uid !== myUid()) ? `
+              <select class="mr-role" aria-label="Permissão de ${escapeHtml(m.name||'membro')}">
+                <option value="editor" ${m.role==='editor'?'selected':''}>editor</option>
+                <option value="viewer" ${m.role==='viewer'?'selected':''}>só leitura</option>
+                <option value="owner"  ${m.role==='owner'?'selected':''}>responsável</option>
+              </select>
+              <button class="mr-remove" aria-label="Remover ${escapeHtml(m.name||'membro')}">&times;</button>
+            ` : `<span class="role-badge ${m.role}">${papelPorExtenso(m.role)}</span>`}
+          </div>`).join('')}
+      </div>
+
+      <div class="modal-buttons">
+        <button id="mhClose">Fechar</button>
+        <button class="danger" id="mhLeave">${souDono && membros.length===1 ? 'Excluir família' : 'Sair da família'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = wireModalDismiss(overlay);
+  overlay.querySelector('#mhClose').onclick = close;
+
+  const inviteBtn = overlay.querySelector('#mhInvite');
+  if(inviteBtn) inviteBtn.onclick = async ()=>{
+    inviteBtn.disabled = true;
+    try{
+      const code = await createInvite(scope.id, 'editor', 7);
+      mostrarConvite(overlay.querySelector('#inviteArea'), code);
+    }catch(e){
+      console.error(e);
+      showToast('Não foi possível gerar o convite');
+    }
+    inviteBtn.disabled = false;
+  };
+
+  overlay.querySelectorAll('.mr-role').forEach(sel=>{
+    sel.onchange = async ()=>{
+      const uid = sel.closest('.member-row').dataset.uid;
+      try{
+        await db.collection(HOUSEHOLD_COLLECTION).doc(scope.id)
+          .update({ ['members.' + uid + '.role']: sel.value, updatedAt: Date.now() });
+        showToast('Permissão atualizada');
+      }catch(e){ showToast('Não foi possível alterar'); }
+    };
+  });
+
+  overlay.querySelectorAll('.mr-remove').forEach(btn=>{
+    btn.onclick = ()=>{
+      const row = btn.closest('.member-row');
+      const uid = row.dataset.uid;
+      const nome = row.querySelector('.mr-name').textContent;
+      openConfirmModal('Remover da família',
+        `${nome} deixa de ver e editar as listas desta família. As listas pessoais dessa pessoa não são afetadas.`,
+        'Remover', async ()=>{
+          try{
+            await db.collection(HOUSEHOLD_COLLECTION).doc(scope.id).update({
+              memberUids: firebase.firestore.FieldValue.arrayRemove(uid),
+              ['members.' + uid]: firebase.firestore.FieldValue.delete(),
+              updatedAt: Date.now()
+            });
+            close();
+            showToast('Removido');
+          }catch(e){ showToast('Não foi possível remover'); }
+        }, true);
+    };
+  });
+
+  overlay.querySelector('#mhLeave').onclick = ()=>{
+    const sozinho = souDono && membros.length === 1;
+    openConfirmModal(sozinho ? 'Excluir família' : 'Sair da família',
+      sozinho
+        ? 'As listas compartilhadas desta família serão apagadas para sempre. Suas listas pessoais não são afetadas.'
+        : 'Você deixa de ver as listas desta família. Elas continuam existindo para os outros membros.',
+      sozinho ? 'Excluir' : 'Sair', async ()=>{
+        try{
+          if(sozinho){
+            await db.collection(HOUSEHOLD_COLLECTION).doc(scope.id).delete();
+          } else {
+            await db.collection(HOUSEHOLD_COLLECTION).doc(scope.id).update({
+              memberUids: firebase.firestore.FieldValue.arrayRemove(myUid()),
+              ['members.' + myUid()]: firebase.firestore.FieldValue.delete(),
+              updatedAt: Date.now()
+            });
+          }
+          close();
+          await switchScope({ type:'personal', id:null, name:'Minhas listas' });
+          showToast(sozinho ? 'Família excluída' : 'Você saiu da família');
+        }catch(e){
+          console.error(e);
+          showToast('Não foi possível concluir');
+        }
+      }, true);
+  };
+}
+
+function mostrarConvite(area, code){
+  const link = inviteLink(code);
+  area.innerHTML = `
+    <div class="invite-box">
+      <div class="ib-note">Código do convite</div>
+      <div class="ib-code">${escapeHtml(code)}</div>
+      <div class="ib-note">Vale por 7 dias. Quem usar entra como <strong>editor</strong>.</div>
+      <div class="invite-actions">
+        <button id="ivCopy">Copiar link</button>
+        <button id="ivShare">Compartilhar</button>
+      </div>
+    </div>`;
+  area.querySelector('#ivCopy').onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(link); showToast('Link copiado'); }
+    catch(e){ showToast(link); }
+  };
+  area.querySelector('#ivShare').onclick = async ()=>{
+    const texto = `Entre na nossa lista de compras: ${link}`;
+    if(navigator.share){
+      try{ await navigator.share({ title:'Lista de Compras', text: texto, url: link }); }catch(e){}
+    } else {
+      try{ await navigator.clipboard.writeText(texto); showToast('Convite copiado'); }
+      catch(e){ showToast(link); }
+    }
+  };
+}
+
+/* ---------- atribuição de item a um membro ---------- */
+function openAssignModal(item, list){
+  if(scope.type !== 'household' || !currentHousehold) return;
+  const membros = Object.keys(currentHousehold.members || {}).map(uid=>
+    Object.assign({ uid }, currentHousehold.members[uid]));
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Quem pega isso?</h2>
+      <p class="sub">"${escapeHtml(item.name)}" — útil quando vocês se dividem pelo mercado.</p>
+      <div id="asArea">
+        <div class="member-row" data-uid="">
+          <span class="avatar" style="background:var(--ink-light)">—</span>
+          <span class="mr-info"><span class="mr-name">Ninguém em especial</span>
+          <span class="mr-sub">qualquer um pega</span></span>
+          ${!item.assignedTo ? '<span class="hr-check">✓</span>' : ''}
+        </div>
+        ${membros.map(m=>`
+          <div class="member-row" data-uid="${m.uid}">
+            ${avatarHtml(m.uid, m.name)}
+            <span class="mr-info"><span class="mr-name">${escapeHtml(m.name || 'membro')}${m.uid===myUid()?' (você)':''}</span>
+            <span class="mr-sub">${presenceOnline.some(p=>p.uid===m.uid)?'online agora':'&nbsp;'}</span></span>
+            ${item.assignedTo === m.uid ? '<span class="hr-check">✓</span>' : ''}
+          </div>`).join('')}
+      </div>
+      <div class="modal-buttons"><button id="asClose">Fechar</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = wireModalDismiss(overlay);
+  overlay.querySelector('#asClose').onclick = close;
+  overlay.querySelectorAll('.member-row').forEach(row=>{
+    row.style.cursor = 'pointer';
+    row.onclick = ()=>{
+      item.assignedTo = row.dataset.uid || null;
+      touch(item); touchList(list);
+      saveData(); close(); render();
+      showToast(item.assignedTo ? 'Atribuído a ' + memberName(item.assignedTo) : 'Atribuição removida');
+      trackEvent('item_assigned');
+    };
+  });
+}
+
+/* ---------- Comportamento comum de modais ----------
+   Dois problemas reais que apareceram em uso:
+   (a) dar foco no campo abre o teclado virtual, que come a metade de baixo
+       da tela — inclusive os botões de ação. Em telas de toque o foco fica
+       por conta do usuário;
+   (b) alguns modais não fechavam por toque fora nem por Esc, então quando
+       o botão ficava inacessível não havia saída nenhuma. */
+function focusIfNotTouch(el){
+  if(!el) return;
+  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if(!touch) el.focus();
+}
+
+function wireModalDismiss(overlay, onClose){
+  const close = ()=>{
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+    if(onClose) onClose();
+  };
+  function onKey(e){ if(e.key === 'Escape'){ e.preventDefault(); close(); } }
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) close(); });
+  overlay.__close = close;
+  return close;
 }
 
 /* =================== UTIL =================== */

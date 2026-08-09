@@ -53,11 +53,17 @@ function loadApp(){
   const windowStub = {
     addEventListener: () => {},
     matchMedia: () => ({ matches: false }),
-    location: { href: 'http://localhost/' }
+    location: { href: 'http://localhost/', origin: 'http://localhost', pathname: '/', search: '' },
+    crypto: require('crypto').webcrypto,
+    Notification: undefined
   };
 
   const sandbox = {
     console,
+    location: { href: 'http://localhost/', origin: 'http://localhost', pathname: '/', search: '' },
+    crypto: require('crypto').webcrypto,
+    URLSearchParams,
+    Uint32Array, Set, Map, Promise, RegExp, Error, Array, Object, String, Number, Boolean,
     setTimeout, clearTimeout, setInterval, clearInterval,
     Date, Math, JSON, Intl,
     document: documentStub,
@@ -82,7 +88,13 @@ function loadApp(){
   // realm enxerga esse escopo, então é por aqui que os testes leem e trocam
   // o estado do app.
   vm.runInContext(
-    'function __setState(s){ state = s; } function __getState(){ return state; }',
+    'function __setState(s){ state = s; }' +
+    'function __getState(){ return state; }' +
+    'function __setScope(s){ scope = s; }' +
+    'function __getScope(){ return scope; }' +
+    'function __setAuthUser(u){ authUser = u; }' +
+    'function __setCurrentHousehold(h){ currentHousehold = h; }' +
+    'function __setPresence(p){ presenceOnline = p || []; }',
     sandbox, { filename: 'harness:bridge' }
   );
 

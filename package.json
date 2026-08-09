@@ -1,12 +1,15 @@
 {
   "name": "lista-de-compras",
-  "version": "3.0.0",
+  "version": "4.0.0-G",
   "private": true,
-  "description": "PWA de lista de compras — Fase 3 (segurança, integridade de dados, entrada rápida, modo compra)",
+  "description": "PWA de lista de compras — Fase 3 completa + Fase 4 bloco G (colaboração familiar)",
   "scripts": {
     "test": "node testes/testes.js",
     "check": "node testes/checar-sintaxe.js",
     "verificar": "npm run check && npm test"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "jsdom": "^30.0.1"
+  }
 }
