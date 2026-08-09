@@ -2,7 +2,7 @@
 ### Parecer de consultoria multidisciplinar (UX · Engenharia · Produto · Qualidade)
 
 **Revisão 2** — atualizada com o que já foi executado
-**Base:** código atual (~3.500 linhas de script), 69 testes automatizados, Fase 3 completa, Fase 4 bloco G entregue
+**Base:** código atual (~3.500 linhas de script), 72 testes automatizados, Fase 3 completa, Fase 4 bloco G entregue
 **Data:** agosto de 2026
 
 ---
@@ -64,7 +64,8 @@ O motivo está em §4.
 
 | Problema | Causa | Correção |
 |---|---|---|
-| Botões "Criar lista"/"Cancelar" inacessíveis | `max-height:88vh` ignora o teclado virtual; o rodapé do modal ficava embaixo do teclado. Agravado pelas sugestões de recompra, que deixaram o modal mais alto | `dvh`, rodapé `sticky`, sem foco automático em telas de toque, e fechamento por Esc / toque fora |
+| Botões "Criar lista"/"Cancelar" **inertes** ao abrir pela aba `+ nova lista` | `addTab.onclick = openNewListModal` — o navegador passa o `MouseEvent` como primeiro argumento, que chegava no lugar da lista de pré-preenchimento. O bloco de sugestões chamava `.forEach` nele, estourava, e a função abortava **antes** de ligar os botões | Handler passa a ser `()=> openNewListModal()`; argumento validado como array; botões ligados **antes** de qualquer bloco opcional; sugestões dentro de `try/catch`; 3 testes de regressão |
+| Rodapé do modal debaixo do teclado virtual no celular | `max-height:88vh` ignora o teclado | `dvh`, rodapé `sticky`, sem foco automático em telas de toque, fechamento por Esc / toque fora |
 | `2x leite` virava um item chamado "X leite" | Ordem de avaliação do parser | Multiplicador testado antes do padrão de unidade |
 | Leite condensado no corredor refrigerado | Grupo errado no dicionário | Movido para Mercearia |
 

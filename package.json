@@ -1,6 +1,6 @@
 {
   "name": "lista-de-compras",
-  "version": "4.0.0-G",
+  "version": "4.0.1-G",
   "private": true,
   "description": "PWA de lista de compras — Fase 3 completa + Fase 4 bloco G (colaboração familiar)",
   "scripts": {

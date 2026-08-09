@@ -171,7 +171,7 @@ lista-de-compras/
 ├── package.json             Scripts de verificação e teste
 ├── testes/
 │   ├── harness.js           Carrega o script do index.html no Node
-│   ├── testes.js            69 testes da lógica de negócio
+│   ├── testes.js            72 testes da lógica de negócio
 │   └── checar-sintaxe.js    Verificação sem build
 ├── .github/workflows/qa.yml Portão de qualidade (beta → main)
 ├── README.md                Este documento
@@ -191,7 +191,7 @@ lista-de-compras/
 
 ```bash
 npm run check       # sintaxe de index.html, sw.js e manifest.json
-npm test            # 69 testes unitários da lógica de negócio
+npm test            # 72 testes unitários da lógica de negócio
 npm run verificar   # os dois
 ```
 

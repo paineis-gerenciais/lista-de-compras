@@ -1518,7 +1518,10 @@ function renderTabs(){
   const addTab = document.createElement('button');
   addTab.className = 'tab add-tab';
   addTab.textContent = '+ nova lista';
-  addTab.onclick = openNewListModal;
+  // NUNCA passar a função direto como handler: o navegador entrega o
+  // MouseEvent como primeiro argumento, e ele acabava chegando em
+  // openNewListModal no lugar da lista de itens de pré-preenchimento.
+  addTab.onclick = ()=> openNewListModal();
   row.appendChild(addTab);
 }
 
@@ -2116,6 +2119,10 @@ function handleAddItem(list, catSelect){
 
 /* =================== NOVA LISTA =================== */
 function openNewListModal(prefillItems){
+  // Defesa: qualquer coisa que não seja uma lista de itens é descartada.
+  // Se um handler voltar a passar um evento por engano, o modal abre normal
+  // em vez de nascer sem os botões funcionando.
+  const preenchimento = Array.isArray(prefillItems) ? prefillItems : [];
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -2148,10 +2155,45 @@ function openNewListModal(prefillItems){
   `;
   document.body.appendChild(overlay);
 
+  /* Os botões de ação são ligados PRIMEIRO, antes de qualquer bloco
+     opcional. Foi exatamente isso que faltou da primeira vez: uma exceção
+     no meio do caminho deixava o modal na tela com "Cancelar" e "Criar
+     lista" inertes, sem nenhuma saída para o usuário. */
+  let freq = 7;
+  const close = wireModalDismiss(overlay);
+  overlay.querySelector('#nlCancel').onclick = close;
+  overlay.querySelector('#nlCreate').onclick = ()=>{
+    const name = overlay.querySelector('#nlName').value.trim();
+    if(!name){ overlay.querySelector('#nlName').focus(); return; }
+    const recurring = overlay.querySelector('#nlRecurring').checked;
+    const list = createListObject(name, recurring, freq);
+    Array.from(picked.values()).forEach(i=>{
+      addOrMergeItem(list, { name:i.name, qty:i.qty || '1', unit:i.unit||'', category:i.category||'', price:(i.price!=null?i.price:null) });
+    });
+    state.lists.push(list);
+    state.activeListId = list.id;
+    saveData();
+    close();
+    render();
+    showToast('Lista criada');
+  };
+  overlay.querySelector('#nlRecurring').onchange = (e)=>{
+    overlay.querySelector('#freqField').style.display = e.target.checked ? 'block' : 'none';
+  };
+  overlay.querySelectorAll('#freqSeg button').forEach(b=>{
+    b.onclick = ()=>{
+      overlay.querySelectorAll('#freqSeg button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      freq = parseInt(b.dataset.v, 10);
+    };
+  });
+
   /* B6: sugestões de recompra a partir do que já foi comprado antes.
-     Um toque por item, em vez de digitar tudo de novo toda semana. */
+     Um toque por item, em vez de digitar tudo de novo toda semana.
+     Bloco opcional: se falhar, o modal continua utilizável. */
   const picked = new Map();
-  (prefillItems || []).forEach(i=> picked.set(normalizeName(i.name), i));
+  preenchimento.forEach(i=>{ if(i && i.name) picked.set(normalizeName(i.name), i); });
+  try{
   const suggestions = topRepurchaseSuggestions(8);
   if(suggestions.length){
     const box = overlay.querySelector('#nlSuggestBox');
@@ -2173,36 +2215,11 @@ function openNewListModal(prefillItems){
       chips.appendChild(chip);
     });
   }
+  }catch(e){
+    console.error('Falha ao montar as sugestões de recompra', e);
+  }
 
-  let freq = 7;
-  overlay.querySelector('#nlRecurring').onchange = (e)=>{
-    overlay.querySelector('#freqField').style.display = e.target.checked ? 'block' : 'none';
-  };
-  overlay.querySelectorAll('#freqSeg button').forEach(b=>{
-    b.onclick = ()=>{
-      overlay.querySelectorAll('#freqSeg button').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      freq = parseInt(b.dataset.v, 10);
-    };
-  });
-  overlay.querySelector('#nlCancel').onclick = ()=> overlay.remove();
-  overlay.querySelector('#nlCreate').onclick = ()=>{
-    const name = overlay.querySelector('#nlName').value.trim();
-    if(!name){ overlay.querySelector('#nlName').focus(); return; }
-    const recurring = overlay.querySelector('#nlRecurring').checked;
-    const list = createListObject(name, recurring, freq);
-    Array.from(picked.values()).forEach(i=>{
-      addOrMergeItem(list, { name:i.name, qty:i.qty || '1', unit:i.unit||'', category:i.category||'', price:(i.price!=null?i.price:null) });
-    });
-    state.lists.push(list);
-    state.activeListId = list.id;
-    saveData();
-    overlay.remove();
-    render();
-    showToast('Lista criada');
-  };
   focusIfNotTouch(overlay.querySelector('#nlName'));
-  wireModalDismiss(overlay);
 }
 document.getElementById('scopePill').onclick = ()=> openHouseholdsModal();
 document.getElementById('newListBtn').onclick = ()=> openNewListModal();

@@ -13,7 +13,7 @@
   Fase 2 continuaria vendo o app antigo indefinidamente.
 */
 
-const CACHE_NAME = 'lista-compras-v4';
+const CACHE_NAME = 'lista-compras-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

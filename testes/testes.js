@@ -614,6 +614,37 @@ test('link de convite carrega o código', ()=>{
   ok(link.includes('convite=ABCD2345'), link);
 });
 
+/* =========================================================
+   Regressão de bugs já corrigidos
+   ========================================================= */
+suite('Regressão · bugs corrigidos');
+
+test('BUG: modal de nova lista não pode quebrar se receber um evento no lugar da lista', ()=>{
+  // Causa real: `addTab.onclick = openNewListModal` fazia o navegador passar
+  // o MouseEvent como primeiro argumento. O bloco de sugestões chamava
+  // .forEach nele, estourava, e o modal ficava na tela com os botões inertes.
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+  app.__setState(app.normalizeState(null));
+  const eventoFalso = { type:'click', target:{}, bubbles:true };
+  app.openNewListModal(eventoFalso);   // não pode lançar
+  app.openNewListModal('texto solto');
+  app.openNewListModal(42);
+  app.openNewListModal();
+  ok(true, 'nenhuma entrada inválida pode derrubar o modal');
+});
+
+test('pré-preenchimento válido continua funcionando', ()=>{
+  app.__setState(app.normalizeState(null));
+  app.openNewListModal([{ name:'Arroz', qty:'2', unit:'kg', category:'Mercearia', price:null }]);
+  ok(true, 'lista de itens legítima é aceita');
+});
+
+test('itens sem nome no pré-preenchimento são ignorados', ()=>{
+  app.__setState(app.normalizeState(null));
+  app.openNewListModal([{ qty:'1' }, null, { name:'Café', qty:'1' }]);
+  ok(true, 'entradas incompletas não podem quebrar a montagem');
+});
+
 // restaura o contexto para não vazar entre execuções
 app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
 app.__setAuthUser(null);

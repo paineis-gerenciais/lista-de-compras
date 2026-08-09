@@ -46,10 +46,10 @@ Copie por cima os arquivos da entrega:
 
 ```
 index.html          ← substitui (correção + bloco G)
-sw.js               ← substitui (CACHE_NAME v3 → v4)
+sw.js               ← substitui (CACHE_NAME v3 → v5)
 firestore.rules     ← substitui (+ households e householdInvites)
 package.json        ← substitui
-testes/             ← substitui (69 testes, era 51)
+testes/             ← substitui (72 testes, era 51)
 README.md · PLANO-EVOLUCAO-PRODUTO.md · BLOCO-G-RESUMO.md
 ```
 
@@ -57,10 +57,10 @@ README.md · PLANO-EVOLUCAO-PRODUTO.md · BLOCO-G-RESUMO.md
 npm run verificar
 ```
 
-Esperado: `sintaxe ok` e `69 passaram · 0 falharam`.
+Esperado: `sintaxe ok` e `72 passaram · 0 falharam`.
 
 - [ ] Verde
-- [ ] `CACHE_NAME` em `sw.js` está em `lista-compras-v4`
+- [ ] `CACHE_NAME` em `sw.js` está em `lista-compras-v5`
 
 ```bash
 git add -A && git commit -m "Corrige acesso aos botões do modal; Fase 4 bloco G: colaboração familiar" && git push
@@ -82,6 +82,9 @@ Acesse pelo celular na rede local (`http://SEU-IP:8080`).
 
 | # | Teste | Esperado | OK |
 |---|---|---|---|
+| 0a | **Desktop:** abrir pela aba `+ nova lista` e tocar em **Cancelar** | Fecha (era aqui que travava) | ☐ |
+| 0b | **Desktop:** abrir pela aba, digitar nome, **Criar lista** | Cria a lista | ☐ |
+| 0c | Repetir 0a e 0b pelo botão **+** do cabeçalho | Idem | ☐ |
 | 1 | Tocar em **+** (nova lista) | Modal abre e o teclado **não** sobe sozinho | ☐ |
 | 2 | Tocar em **Cancelar** | Fecha | ☐ |
 | 3 | Abrir de novo, tocar no campo de nome (teclado sobe), digitar, tocar em **Criar lista** | **Funciona** — os botões ficam grudados no fim do modal, acima do teclado | ☐ |
@@ -89,7 +92,16 @@ Acesse pelo celular na rede local (`http://SEU-IP:8080`).
 | 5 | No desktop, abrir e apertar **Esc** | Fecha | ☐ |
 | 6 | Modal com muitas sugestões de recompra | Conteúdo rola, botões permanecem visíveis | ☐ |
 
-> **O que era o bug:** o modal usava `max-height:88vh`. `vh` ignora o teclado
+> **O que eram os bugs — foram dois.** O primeiro, e o que você viu no
+> desktop: a aba `+ nova lista` registrava o handler como
+> `addTab.onclick = openNewListModal`, e o navegador entrega o `MouseEvent`
+> como primeiro argumento. Ele chegava no lugar da lista de pré-preenchimento,
+> o bloco de sugestões de recompra chamava `.forEach` nele, a exceção
+> abortava a função **antes** de os botões serem ligados — e o modal ficava
+> na tela, bonito e inerte, sem nenhuma saída. Foi um bug que eu mesmo
+> introduzi no bloco B6 da Fase 3.
+>
+> O segundo, só no celular: o modal usava `max-height:88vh`. `vh` ignora o teclado
 > virtual, então o modal continuava dimensionado para a tela inteira e o rodapé
 > com os botões ficava **debaixo do teclado** — visível na hora de abrir, mas
 > intocável depois que o campo recebia foco. As sugestões de recompra do bloco
