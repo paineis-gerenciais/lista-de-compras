@@ -1,0 +1,41 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "lists",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner.kind", "order": "ASCENDING" },
+        { "fieldPath": "owner.id", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "purchases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner.kind", "order": "ASCENDING" },
+        { "fieldPath": "owner.id", "order": "ASCENDING" },
+        { "fieldPath": "finishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "priceEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner.kind", "order": "ASCENDING" },
+        { "fieldPath": "owner.id", "order": "ASCENDING" },
+        { "fieldPath": "key", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deletedAt", "order": "ASCENDING" },
+        { "fieldPath": "position", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

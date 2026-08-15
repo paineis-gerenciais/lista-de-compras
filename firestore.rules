@@ -1,196 +1,183 @@
 rules_version = '2';
 
 /*
-  Lista de Compras — Regras de Segurança (Fase 3)
+  Lista de Compras — Regras de Segurança v5 (blocos E e F)
 
-  O QUE MUDOU E POR QUÊ
-  ---------------------
-  A regra da Fase 2 era:
+  O modelo granular muda a forma das regras: em vez de proteger um documento
+  gigante por usuário, protegemos coleções por dono. O dono de uma lista é
+  uma pessoa OU uma família, e é o campo `owner` que decide qual regra vale.
 
-      allow read, write: if ownerId is string && ownerId.size() > 0;
-
-  Isso permitia que QUALQUER pessoa com o SDK do Firebase e o projectId
-  (que é público por natureza — fica no HTML de todo app Firebase) lesse e
-  escrevesse QUALQUER documento: bastava adivinhar o "código de
-  sincronização". Códigos legíveis como "familia-silva" são enumeráveis.
-  Não era uma senha; era uma porta destrancada com o nome do morador na
-  placa. Com um segundo usuário no app, isso vira incidente de LGPD.
-
-  A regra abaixo exige autenticação e amarra o documento ao uid gerado pelo
-  Firebase Auth — que o usuário não escolhe e não consegue forjar.
-
-  PUBLICAR: Console do Firebase → Firestore Database → Regras → Publicar.
-  Publique DEPOIS de o login estar funcionando, senão o app para de gravar.
+  Isso também é o que torna possível a pendência 1 — mover uma lista entre
+  pessoal e família é uma escrita no campo `owner`, e a regra confere que a
+  pessoa tem permissão nos DOIS lados da mudança.
 */
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Confere se o payload tem a forma esperada. Não substitui a validação
-    // do cliente: serve para impedir que um cliente adulterado grave lixo
-    // ou infle o documento até estourar custo de leitura.
-    function validPayload() {
-      return request.resource.data.keys().hasAll(['state', 'updatedAt'])
-          && request.resource.data.state is map
-          && request.resource.data.updatedAt is number
-          // limite de chaves de primeiro nível do estado. Se algum dia isso
-          // apertar, o problema não é a regra: é o modelo monolítico de um
-          // documento por usuário, que a Fase 4 substitui.
-          && request.resource.data.state.keys().size() < 24;
+    function logado() { return request.auth != null; }
+    function meuUid() { return request.auth.uid; }
+
+    function casa(hid) {
+      return get(/databases/$(database)/documents/households/$(hid)).data;
+    }
+    function papelNaCasa(hid) {
+      return casa(hid).members[meuUid()].role;
+    }
+    function souMembro(hid) {
+      return logado() && meuUid() in casa(hid).members;
+    }
+    function editaNaCasa(hid) {
+      return souMembro(hid) && papelNaCasa(hid) in ['owner', 'editor'];
     }
 
-    function isOwner(ownerId) {
-      return request.auth != null && request.auth.uid == ownerId;
+    /* Vale para qualquer documento com campo `owner`. */
+    function podeLer(owner) {
+      return logado() && (
+        (owner.kind == 'user' && owner.id == meuUid()) ||
+        (owner.kind == 'household' && souMembro(owner.id))
+      );
+    }
+    function podeEscrever(owner) {
+      return logado() && (
+        (owner.kind == 'user' && owner.id == meuUid()) ||
+        (owner.kind == 'household' && editaNaCasa(owner.id))
+      );
     }
 
-    match /shoppingLists/{ownerId} {
-
-      // Só o dono lê. Sem login, ninguém lê nada.
-      allow read: if isOwner(ownerId);
-
-      // Criação: o documento nasce com a forma esperada.
-      allow create: if isOwner(ownerId) && validPayload();
-
-      // Atualização: continua sendo o dono e o payload continua válido.
-      // Recusamos escrita que "volta no tempo" — updatedAt nunca retrocede,
-      // o que barra o replay de um estado antigo.
-      allow update: if isOwner(ownerId)
-                    && validPayload()
-                    && request.resource.data.updatedAt >= resource.data.updatedAt;
-
-      // Exclusão dos próprios dados (portabilidade e direito ao
-      // esquecimento — LGPD). Só o dono.
-      allow delete: if isOwner(ownerId);
+    // ---------------- perfil ----------------
+    match /users/{uid} {
+      allow read, write: if logado() && meuUid() == uid;
     }
 
-    /* ===================================================================
-       BLOCO G — LISTAS COMPARTILHADAS (FAMÍLIAS)
-       ===================================================================
+    // ---------------- listas ----------------
+    match /lists/{listId} {
+      allow read:   if podeLer(resource.data.owner);
+      allow create: if podeEscrever(request.resource.data.owner);
+      allow delete: if podeEscrever(resource.data.owner);
 
-       Papéis:
-         owner  — tudo, inclusive convidar, mudar papéis e excluir
-         editor — mexer nas listas
-         viewer — só ler
+      /* Mover de escopo exige permissão na origem E no destino — senão
+         alguém poderia empurrar uma lista para dentro de uma família de que
+         não participa, ou tirar de uma família sem ser editor lá. */
+      allow update: if podeEscrever(resource.data.owner)
+                    && podeEscrever(request.resource.data.owner);
 
-       O ponto delicado é o ingresso: alguém que AINDA NÃO é membro precisa
-       conseguir se acrescentar à família. Se isso ficar solto, qualquer
-       pessoa logada entra em qualquer família. A regra abaixo só aceita a
-       auto-inclusão quando o servidor confere, por conta própria, que existe
-       um convite válido, não expirado, apontando para esta família e com o
-       mesmo papel que o cliente está tentando gravar.
-    */
-
-    function membros() {
-      return resource.data.members;
-    }
-    function souMembro() {
-      return request.auth != null && request.auth.uid in membros();
-    }
-    function meuPapel() {
-      return membros()[request.auth.uid].role;
-    }
-    function souDono() {
-      return souMembro() && meuPapel() == 'owner';
-    }
-    function possoEditar() {
-      return souMembro() && meuPapel() in ['owner', 'editor'];
+      match /items/{itemId} {
+        function donoDaLista() {
+          return get(/databases/$(database)/documents/lists/$(listId)).data.owner;
+        }
+        allow read:  if podeLer(donoDaLista());
+        allow write: if podeEscrever(donoDaLista());
+      }
     }
 
-    // Campos alterados nesta escrita.
-    function alterou(campos) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    // ---------------- compras finalizadas ----------------
+    match /purchases/{purchaseId} {
+      allow read:   if podeLer(resource.data.owner);
+      allow create: if podeEscrever(request.resource.data.owner);
+      allow delete: if podeEscrever(resource.data.owner);
+      // Uma compra finalizada é um retrato do passado. Não se edita.
+      allow update: if false;
     }
 
-    // Ingresso: a pessoa só acrescenta a si mesma, mexendo apenas em
-    // members/memberUids/updatedAt, e amparada por um convite verificável.
-    function ingressoComConvite(hid) {
-      let uid = request.auth.uid;
-      let entrada = request.resource.data.members[uid];
-      let convite = get(/databases/$(database)/documents/householdInvites/$(entrada.inviteCode)).data;
-      return request.auth != null
-          && !(uid in membros())
-          && alterou(['members', 'memberUids', 'updatedAt'])
-          && request.resource.data.members.diff(membros()).affectedKeys().hasOnly([uid])
-          && request.resource.data.memberUids.hasAll(resource.data.memberUids)
-          && convite.householdId == hid
-          && convite.expiresAt > request.time.toMillis()
-          && entrada.role == convite.role
-          && entrada.role in ['editor', 'viewer'];
+    // ---------------- histórico de preços ----------------
+    match /priceEntries/{entryId} {
+      allow read:   if podeLer(resource.data.owner);
+      allow create: if podeEscrever(request.resource.data.owner)
+                    && request.resource.data.unitPrice is number
+                    && request.resource.data.unitPrice > 0;
+      allow delete: if podeEscrever(resource.data.owner);
+      // Um preço pago é fato consumado; corrigir se faz apagando e lançando.
+      allow update: if false;
     }
 
-    // Saída: a pessoa remove apenas a si mesma.
-    function saidaPropria() {
-      let uid = request.auth.uid;
-      return souMembro()
-          && alterou(['members', 'memberUids', 'updatedAt'])
-          && request.resource.data.members.diff(membros()).affectedKeys().hasOnly([uid])
-          && !(uid in request.resource.data.members);
-    }
-
-    // Edição das listas: mexe no estado, nunca em quem participa.
-    function edicaoDeListas() {
-      return possoEditar()
-          && alterou(['state', 'updatedAt', 'schemaVersion'])
-          && request.resource.data.state is map;
-    }
-
+    // ---------------- famílias ----------------
     match /households/{hid} {
 
-      allow read: if souMembro();
+      function membrosAtuais() { return resource.data.members; }
+      function alterou(campos) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+      }
 
-      // Quem cria já nasce como dono e único membro.
-      allow create: if request.auth != null
-                    && request.resource.data.ownerUid == request.auth.uid
-                    && request.resource.data.memberUids == [request.auth.uid]
-                    && request.resource.data.members[request.auth.uid].role == 'owner'
+      /* Ingresso: quem ainda não é membro se acrescenta, mas só amparado por
+         um convite que o SERVIDOR confere — existe, não expirou, não foi
+         revogado, aponta para esta família e traz o mesmo papel. */
+      function ingressoComConvite() {
+        let entrada = request.resource.data.members[meuUid()];
+        let inv = get(/databases/$(database)/documents/householdInvites/$(entrada.inviteCode)).data;
+        return logado()
+            && !(meuUid() in membrosAtuais())
+            && alterou(['members', 'memberUids', 'updatedAt'])
+            && request.resource.data.members.diff(membrosAtuais()).affectedKeys().hasOnly([meuUid()])
+            && request.resource.data.memberUids.hasAll(resource.data.memberUids)
+            && inv.householdId == hid
+            && inv.expiresAt > request.time.toMillis()
+            && !('revokedAt' in inv && inv.revokedAt != null)
+            && entrada.role == inv.role
+            && entrada.role in ['editor', 'viewer'];
+      }
+
+      function saidaPropria() {
+        return souMembro(hid)
+            && alterou(['members', 'memberUids', 'updatedAt'])
+            && request.resource.data.members.diff(membrosAtuais()).affectedKeys().hasOnly([meuUid()])
+            && !(meuUid() in request.resource.data.members);
+      }
+
+      allow read: if souMembro(hid);
+
+      allow create: if logado()
+                    && request.resource.data.ownerUid == meuUid()
+                    && request.resource.data.memberUids == [meuUid()]
+                    && request.resource.data.members[meuUid()].role == 'owner'
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 60;
 
-      allow update: if edicaoDeListas()          // editar listas
-                    || souDono()                 // dono administra membros e nome
-                    || ingressoComConvite(hid)   // entrar por convite
-                    || saidaPropria();           // sair por conta própria
+      allow update: if (souMembro(hid) && papelNaCasa(hid) == 'owner')
+                    || ingressoComConvite()
+                    || saidaPropria();
 
-      // Excluir a família inteira: só o dono.
-      allow delete: if souDono();
+      allow delete: if souMembro(hid) && papelNaCasa(hid) == 'owner';
 
-      /* Presença: quem está com o app aberto agora. Todo membro lê;
-         cada pessoa escreve apenas o próprio registro. */
       match /presence/{uid} {
-        allow read: if request.auth != null
-                    && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members;
-        allow write: if request.auth != null
-                     && request.auth.uid == uid
-                     && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members;
+        allow read:  if souMembro(hid);
+        allow write: if logado() && meuUid() == uid && souMembro(hid);
       }
     }
 
-    /* Convites.
-       O código de 8 caracteres É o segredo: quem o tem, tem o convite. Por
-       isso qualquer pessoa autenticada pode ler um convite específico — mas
-       ninguém pode LISTAR a coleção, então não há como varrer códigos.
-       Criar e revogar é privilégio do dono da família. */
+    /* Convites. O código de 8 caracteres É o segredo: quem o tem, tem o
+       convite. Por isso qualquer autenticado pode LER um convite específico —
+       mas listar a coleção é proibido, então não há como varrer códigos. */
     match /householdInvites/{code} {
-      allow get: if request.auth != null;
+      allow get:  if logado();
       allow list: if false;
 
-      allow create: if request.auth != null
-                    && request.resource.data.createdBy == request.auth.uid
+      allow create: if logado()
+                    && request.resource.data.createdBy == meuUid()
                     && request.resource.data.role in ['editor', 'viewer']
                     && request.resource.data.expiresAt is number
                     && request.resource.data.expiresAt <= request.time.toMillis() + 31536000000
-                    && get(/databases/$(database)/documents/households/$(request.resource.data.householdId))
-                         .data.members[request.auth.uid].role == 'owner';
+                    && casa(request.resource.data.householdId).members[meuUid()].role == 'owner';
 
-      allow delete: if request.auth != null
-                    && get(/databases/$(database)/documents/households/$(resource.data.householdId))
-                         .data.members[request.auth.uid].role == 'owner';
+      /* PENDÊNCIA 3 — revogar. Marca em vez de apagar: quem tentar usar
+         recebe "cancelado" em vez de "não existe", o que é a informação de
+         que a pessoa precisa quando compartilhou o link no grupo errado. */
+      allow update: if logado()
+                    && casa(resource.data.householdId).members[meuUid()].role == 'owner'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revokedAt']);
 
-      allow update: if false;
+      allow delete: if logado()
+                    && casa(resource.data.householdId).members[meuUid()].role == 'owner';
     }
 
-    // Qualquer outra coleção é negada por padrão.
+    // Documento monolítico da v4: leitura permitida durante a migração,
+    // escrita bloqueada para que ninguém volte a gravar no modelo antigo.
+    match /shoppingLists/{ownerId} {
+      allow read:  if logado() && meuUid() == ownerId;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

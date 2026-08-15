@@ -1,42 +1,41 @@
-# D5 — portão de qualidade antes de qualquer publicação.
-#
-# `beta` é o ambiente de homologação; `main` é produção. Nada chega em main
-# sem passar por aqui. Isso substitui o hábito da Fase 2 de publicar direto
-# em produção, onde um bug de persistência atingia todos os aparelhos
-# instalados no minuto seguinte.
-name: QA
+name: QA e publicação
 
 on:
   push:
-    branches: [main, beta]
+    branches: [main, beta, v5]
   pull_request:
     branches: [main, beta]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Verificar sintaxe (index.html, sw.js, manifest.json)
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - name: Tipos (svelte-check + tsc)
         run: npm run check
+      - name: Testes
+        run: npm run test
+      - name: Build
+        run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with: { path: dist }
 
-      - name: Testes unitários da lógica de negócio
-        run: npm test
-
-      - name: Conferir versão do cache do service worker
-        # Se index.html mudou mas CACHE_NAME não subiu, os aparelhos que já
-        # instalaram o PWA continuariam servindo a versão antiga do cache.
-        if: github.event_name == 'pull_request'
-        run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          if git diff --name-only origin/${{ github.base_ref }} HEAD | grep -qE '^(index\.html|manifest\.json)$'; then
-            if ! git diff origin/${{ github.base_ref }} HEAD -- sw.js | grep -q 'CACHE_NAME'; then
-              echo "::error::index.html mudou mas CACHE_NAME em sw.js não foi incrementado."
-              exit 1
-            fi
-          fi
+  publicar:
+    if: github.ref == 'refs/heads/main'
+    needs: verificar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

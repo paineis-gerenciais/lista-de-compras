@@ -615,6 +615,221 @@ test('link de convite carrega o código', ()=>{
 });
 
 /* =========================================================
+   Fase 4 · Bloco H (H1 + H2) — inteligência de preço
+   ========================================================= */
+suite('H · preços');
+
+function estadoComPrecos(){
+  app.__setScope({ type:'personal', id:null, name:'Minhas listas' });
+  app.__setState(app.normalizeState(null));
+  const s = app.__getState();
+  const dia = 86400000;
+  const agora = Date.now();
+  s.priceHistory = {
+    arroz: [
+      { loja:'Extra',      precoUnit: 28.90, unit:'kg', qty:'1', data: agora - 5*dia },
+      { loja:'Carrefour',  precoUnit: 24.50, unit:'kg', qty:'1', data: agora - 40*dia },
+      { loja:'Extra',      precoUnit: 26.00, unit:'kg', qty:'1', data: agora - 70*dia },
+      { loja:'Carrefour',  precoUnit: 22.00, unit:'kg', qty:'1', data: agora - 100*dia }
+    ],
+    cafe: [ { loja:'Extra', precoUnit: 19.90, unit:'', qty:'1', data: agora - 3*dia } ]
+  };
+  return s;
+}
+
+test('resumo traz último, menor e maior preço', ()=>{
+  estadoComPrecos();
+  const r = app.resumoDePreco('Arroz');
+  eq(r.ultimo.precoUnit, 28.90);
+  eq(r.menor, 22.00);
+  eq(r.maior, 28.90);
+  eq(r.registros, 4);
+});
+
+test('variação compara o registro mais antigo com o mais recente', ()=>{
+  estadoComPrecos();
+  const r = app.resumoDePreco('Arroz');
+  // de 22,00 para 28,90 = +31,4%
+  ok(r.variacao > 31 && r.variacao < 32, 'obtido: ' + r.variacao);
+});
+
+test('mercado mais barato aparece primeiro', ()=>{
+  estadoComPrecos();
+  const r = app.resumoDePreco('Arroz');
+  eq(r.lojas[0].loja, 'Carrefour');
+  eq(r.lojas[0].media, 23.25);
+  eq(r.lojas[1].loja, 'Extra');
+});
+
+test('acento e caixa não criam registros separados', ()=>{
+  const s = estadoComPrecos();
+  s.priceHistory['pao'] = [{ loja:'Padaria', precoUnit: 1.20, unit:'', qty:'1', data: Date.now() }];
+  ok(app.resumoDePreco('Pão'), 'deve achar por "Pão"');
+  ok(app.resumoDePreco('PAO'), 'deve achar por "PAO"');
+  eq(app.resumoDePreco('pão').menor, 1.20);
+});
+
+test('item sem histórico devolve nulo em vez de quebrar', ()=>{
+  estadoComPrecos();
+  eq(app.resumoDePreco('Quiabo'), null);
+  eq(app.ultimoPreco('Quiabo'), null);
+});
+
+test('só itens comprados COM preço entram no histórico', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('Mercado', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1', price: 25.00 });
+  app.addOrMergeItem(l, { name:'Feijão', qty:'1', price: 9.00 });
+  app.addOrMergeItem(l, { name:'Café', qty:'1', price: null });
+  l.items[0].bought = true;   // arroz: comprado com preço  → entra
+  l.items[1].bought = false;  // feijão: não comprado        → fica fora
+  l.items[2].bought = true;   // café: comprado sem preço    → fica fora
+  const n = app.registrarPrecos(l, 'Extra', Date.now());
+  eq(n, 1);
+  const s = app.__getState();
+  ok(s.priceHistory.arroz, 'arroz deve ter entrado');
+  ok(!s.priceHistory.feijao, 'feijão não pode entrar');
+  ok(!s.priceHistory.cafe, 'café sem preço não pode entrar');
+});
+
+test('preço zero ou negativo é descartado', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Sal', qty:'1', price: 0 });
+  l.items[0].bought = true;
+  eq(app.registrarPrecos(l, 'Extra', Date.now()), 0);
+});
+
+test('histórico por item é limitado', ()=>{
+  app.__setState(app.normalizeState(null));
+  const s = app.__getState();
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Leite', qty:'1', price: 5.00 });
+  l.items[0].bought = true;
+  for(let i=0;i<60;i++) app.registrarPrecos(l, 'Extra', Date.now() - i*1000);
+  ok(s.priceHistory.leite.length <= 40, 'obtido: ' + s.priceHistory.leite.length);
+});
+
+test('registros antigos demais são podados', ()=>{
+  app.__setState(app.normalizeState(null));
+  const s = app.__getState();
+  s.priceHistory = {
+    velho: [{ loja:'X', precoUnit:1, unit:'', qty:'1', data: Date.now() - 800*86400000 }],
+    novo:  [{ loja:'X', precoUnit:1, unit:'', qty:'1', data: Date.now() }]
+  };
+  app.podarHistoricoDePrecos();
+  ok(!s.priceHistory.velho, 'registro de 2 anos atrás deve sair');
+  ok(s.priceHistory.novo, 'registro recente deve ficar');
+});
+
+test('total estimado multiplica preço pela quantidade', ()=>{
+  const lista = { items: [
+    { name:'Arroz', qty:'2', price: 10.00, bought:true },
+    { name:'Café',  qty:'1', price: 20.00, bought:true },
+    { name:'Sal',   qty:'1', price: null,  bought:true }
+  ]};
+  eq(app.totalEstimadoDe(lista), 40);
+});
+
+test('gasto por compra usa só compras com valor informado', ()=>{
+  app.__setState(app.normalizeState(null));
+  const s = app.__getState();
+  s.finishedLists = [
+    { id:'a', name:'C1', items:[], finishedAt: 1000, actualTotal: 150.00, store:'Extra' },
+    { id:'b', name:'C2', items:[], finishedAt: 2000, actualTotal: null,   store:null },
+    { id:'c', name:'C3', items:[], finishedAt: 3000, actualTotal: 210.50, store:'Carrefour' }
+  ];
+  const g = app.gastosPorCompra(12);
+  eq(g.length, 2);
+  eq(g.map(x=>x.total), [150.00, 210.50], 'em ordem cronológica');
+});
+
+test('merge une lançamentos de preço dos dois aparelhos, sem duplicar', ()=>{
+  const base = app.normalizeState(null);
+  const A = JSON.parse(JSON.stringify(base));
+  const B = JSON.parse(JSON.stringify(base));
+  const comum = { loja:'Extra', precoUnit: 10, unit:'', qty:'1', data: 1000 };
+  A.priceHistory = { arroz: [ comum, { loja:'Extra', precoUnit: 12, unit:'', qty:'1', data: 2000 } ] };
+  B.priceHistory = { arroz: [ comum, { loja:'Carrefour', precoUnit: 9, unit:'', qty:'1', data: 3000 } ] };
+  const m = app.mergeStates(A, B);
+  eq(m.priceHistory.arroz.length, 3, 'o registro comum não pode duplicar');
+  eq(m.priceHistory.arroz[0].data, 3000, 'mais recente primeiro');
+});
+
+test('merge junta a lista de mercados sem repetir', ()=>{
+  const A = app.normalizeState(null); A.stores = ['Extra', 'Feira'];
+  const B = app.normalizeState(null); B.stores = ['Extra', 'Carrefour'];
+  const m = app.mergeStates(A, B);
+  eq(m.stores.sort(), ['Carrefour', 'Extra', 'Feira']);
+});
+
+test('normalizeState cria os campos de preço em dados antigos', ()=>{
+  const s = app.normalizeState({ lists: [], finishedLists: [
+    { id:'x', name:'Antiga', items:[], finishedAt: 1 }
+  ]});
+  ok(s.priceHistory && typeof s.priceHistory === 'object');
+  ok(Array.isArray(s.stores));
+  eq(s.finishedLists[0].actualTotal, null);
+  eq(s.finishedLists[0].store, null);
+});
+
+test('mensagem de finalização mostra o valor quando informado', ()=>{
+  ok(app.mensagemDeFinalizacao({ actualTotal: 152.30 }).includes('152'), 'deve citar o valor');
+  eq(app.mensagemDeFinalizacao(null), 'Compra finalizada');
+  eq(app.mensagemDeFinalizacao({ actualTotal: null }), 'Compra finalizada');
+});
+
+test('lojas repetidas não se acumulam', ()=>{
+  app.__setState(app.normalizeState(null));
+  app.registrarLoja('Extra Savassi');
+  app.registrarLoja('extra savassi');
+  app.registrarLoja('Carrefour');
+  eq(app.__getState().stores.length, 2);
+});
+
+/* =========================================================
+   Pendência 5 — atualização cirúrgica
+   ========================================================= */
+suite('5 · reagrupamento');
+
+test('marcar o último item pendente não exige reagrupar', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1', category:'Mercearia' });
+  app.addOrMergeItem(l, { name:'Feijão', qty:'1', category:'Mercearia' });
+  l.items[1].bought = true;   // já está no fim do grupo
+  ok(!app.precisaReagrupar(l.items[1], l), 'último do grupo pode ficar onde está');
+});
+
+test('marcar um item no meio exige reagrupar', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1', category:'Mercearia' });
+  app.addOrMergeItem(l, { name:'Feijão', qty:'1', category:'Mercearia' });
+  l.items[0].bought = true;   // há pendente depois dele
+  ok(app.precisaReagrupar(l.items[0], l), 'precisa descer para o fim do grupo');
+});
+
+test('desmarcar item que está depois de um comprado exige reagrupar', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1', category:'Mercearia' });
+  app.addOrMergeItem(l, { name:'Feijão', qty:'1', category:'Mercearia' });
+  l.items[0].bought = true;
+  l.items[1].bought = false;
+  ok(app.precisaReagrupar(l.items[1], l), 'precisa subir para antes dos comprados');
+});
+
+test('itens de categorias diferentes não interferem entre si', ()=>{
+  app.__setState(app.normalizeState(null));
+  const l = app.createListObject('M', false, 7);
+  app.addOrMergeItem(l, { name:'Arroz', qty:'1', category:'Mercearia' });
+  app.addOrMergeItem(l, { name:'Tomate', qty:'1', category:'Hortifruti' });
+  l.items[0].bought = true;
+  ok(!app.precisaReagrupar(l.items[0], l), 'sozinho na categoria, fica onde está');
+});
+
+/* =========================================================
    Regressão de bugs já corrigidos
    ========================================================= */
 suite('Regressão · bugs corrigidos');

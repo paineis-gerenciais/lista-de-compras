@@ -2,7 +2,7 @@
 ### Parecer de consultoria multidisciplinar (UX · Engenharia · Produto · Qualidade)
 
 **Revisão 2** — atualizada com o que já foi executado
-**Base:** código atual (~3.500 linhas de script), 72 testes automatizados, Fase 3 completa, Fase 4 bloco G entregue
+**Base:** código atual (~3.500 linhas de script), 92 testes automatizados, Fase 3 completa, Fase 4 bloco G entregue
 **Data:** agosto de 2026
 
 ---
@@ -14,15 +14,22 @@
 ✅ FASE 2  PWA + Firestore em tempo real
 ✅ FASE 3  ONDA RÁPIDA — completa (blocos A, B, C, D)
 🔄 FASE 4  PRODUTO — em andamento
-   ⬜ E · reestruturação técnica
-   ⬜ F · modelo de dados de verdade
+   🔄 E · reestruturação técnica — arquitetura pronta; falta portar telas
+   🔄 F · modelo de dados de verdade — modelo e migração prontos
    ✅ G · colaboração familiar
-   ⬜ H · inteligência de preço          ← o diferencial
+   🔄 H · inteligência de preço — H1 e H2 entregues; falta H3/H4/H5
    ⬜ I · lojas (Capacitor)
    ⬜ J · qualidade, operação, LGPD
 ```
 
-**Progresso da Fase 4: 1 de 6 blocos.**
+**Progresso da Fase 4: ~3 de 6 blocos** (G completo; E, F e H parciais).
+
+> **Nota de honestidade sobre E e F.** A arquitetura está pronta, tipada,
+> testada e compilando: domínio, repositório, migração, design system, regras
+> e as telas principais. O que falta é *porte de tela* — finalizar compra,
+> preços, famílias, modo compra, histórico, mapa, PDF, login, e o repositório
+> Firestore (só o de memória existe). É trabalho mecânico e de baixo risco,
+> mas é trabalho, e até terminar **a v4 continua sendo o app em produção**.
 
 Os dois riscos que abriram este plano estão fechados. O app deixou de perder
 dados entre dispositivos e deixou de expor dados a quem soubesse o `projectId`.
@@ -59,6 +66,24 @@ O motivo está em §4.
 | G8 | **Avisos** quando outra pessoa mexe na lista, inclusive com o app em segundo plano |
 | G9 | Regras de segurança para `households`, `householdInvites` e presença |
 | G10 | 18 testes novos (total: 69) |
+
+### ✅ Fase 4 · Bloco H — H1 e H2 entregues
+
+| Item | Entrega |
+|---|---|
+| H1 | Ao finalizar, o app pergunta **quanto foi pago** e **em qual mercado** (ambos puláveis), compara com a estimativa em tempo real e guarda o valor na compra arquivada |
+| H2 | **Histórico de preços** alimentado sozinho pelas compras finalizadas — só itens efetivamente comprados e com preço entram |
+| H2 | Tela **Preços**: gasto por compra em gráfico de barras, lista de itens com variação, e detalhe por item com menor/maior/último preço e **comparação entre mercados** |
+| H2 | Dica de preço no modal de edição ("última vez R$ 28,90 no Extra · menor já pago: R$ 22,00 no Carrefour") |
+| H2 | Merge do histórico entre aparelhos por união de lançamentos — dois aparelhos nunca discordam sobre um preço já pago |
+
+**Decisão de escopo:** o preço é gravado como **unitário**, não como total da linha. "2 kg de tomate por R$ 18" e "1 kg por R$ 9" são o mesmo preço; sem normalizar isso, comparar mercados vira ruído.
+
+### ✅ Pendências 5 e 6 resolvidas
+
+**5 — scroll perdido no re-render.** Duas medidas: preservação de scroll, foco e posição do cursor em volta do render; e atualização cirúrgica no caminho mais quente — marcar item como comprado deixou de reconstruir a tela, mexendo só na linha e nos contadores. O render completo só entra quando a linha precisa mesmo mudar de lugar. Somado `content-visibility:auto` nos blocos de categoria. A correção estrutural continua sendo o bloco E.
+
+**6 — Wake Lock no iOS.** *Correção de um erro de diagnóstico meu:* a API funciona no Safari desde o iOS 16.4; o registro anterior de "não suportado no iOS" não procedia. Implementada escada de três níveis: API nativa → vídeo mudo em loop (a técnica do NoSleep.js, só quando não há API) → dica ao usuário sobre o ajuste do sistema. O nível 2 é um truque que custa bateria e pode ser fechado pela Apple, por isso nunca roda junto com o nativo.
 
 ### ✅ Correções pontuais
 
@@ -115,18 +140,20 @@ Ordem deliberada, do menor para o maior risco:
 
 | | O quê | Risco | Esforço |
 |---|---|---|---|
-| **H1** | Total real vs. estimado ao finalizar; gasto por compra ao longo do tempo | baixo | 1 bloco |
-| **H2** | Histórico de preço por item e por mercado | baixo | 1–2 blocos |
-| **H3** | **Spike:** captura automática — QR code da NFC-e *ou* foto do cupom com OCR | **a investigar** | 1–2 blocos |
+| ~~**H1**~~ | ~~Total real vs. estimado; gasto por compra~~ | — | ✅ feito |
+| ~~**H2**~~ | ~~Histórico de preço por item e por mercado~~ | — | ✅ feito |
+| **H3** | **Captura por foto com OCR** — decidido: sem NFC-e/SEFAZ | médio | 2–3 blocos |
 | **H4** | Inflação pessoal e previsão de recompra | médio | 2 blocos |
 | **H5** | Lista sugerida automaticamente a partir dos padrões | médio | 1–2 blocos |
 
-⚠️ **A ressalva de viabilidade do H3 continua de pé.** Não existe API pública
-nacional unificada de NFC-e para o consumidor: a consulta é por portal estadual
-da SEFAZ, cada um com seu formato, alguns com captcha, estabilidade variável.
-Critério de decisão do spike: **taxa de sucesso ≥ 80% em 20 cupons reais de pelo
-menos 3 mercados diferentes**. Se nenhuma abordagem passar, o diferencial se
-sustenta em H1+H2+H4 e o spike é encerrado sem custo afundado.
+**Decisão tomada: só OCR por foto.** A rota da NFC-e foi descartada, e com bons
+motivos — não existe API pública nacional unificada, a consulta é por portal
+estadual da SEFAZ, cada um com seu formato, alguns com captcha. OCR independe
+disso e funciona igual em qualquer estado. Em troca, a extração de itens de um
+cupom fotografado é menos confiável que dados estruturados: o critério de
+sucesso (**≥ 80% de itens corretos em 20 cupons reais de 3 mercados**) continua
+valendo, e o plano B é a revisão manual assistida — o app extrai o que
+conseguir e o usuário confirma antes de gravar.
 
 ### ⬜ Bloco I — Presença nas lojas
 
@@ -167,8 +194,10 @@ Coisas pequenas que apareceram no caminho e ainda não foram feitas:
 | 2 | Convite só cria **editor**; não dá para convidar direto como "só leitura" pela interface (as regras já suportam) | bloco G | P |
 | 3 | Revogar um convite já emitido | bloco G | P |
 | 4 | Modo Resumida/Completa continua sendo uma decisão que o usuário toma; deveria virar revelação progressiva automática | diagnóstico UX rev. 1 | M |
-| 5 | Re-render completo perde posição de scroll acima de ~60 itens | diagnóstico rev. 1 | M |
-| 6 | Wake Lock não funciona em parte do iOS — sem alternativa hoje | bloco C | — |
+| ~~1~~ | ~~Mover lista entre pessoal e família~~ | — | ✅ feito (bloco F) |
+| ~~3~~ | ~~Revogar convite~~ | — | ✅ feito (bloco F) |
+| ~~5~~ | ~~Re-render completo perde posição de scroll~~ | — | ✅ feito |
+| ~~6~~ | ~~Wake Lock no iOS~~ | — | ✅ feito |
 | 7 | Categoria automática não cobre itens regionais | bloco B | P |
 
 ---
@@ -190,21 +219,54 @@ o modelo de dados precisa suportar — o que é bem melhor do que projetar
 `priceHistory` no escuro.
 
 ```
-PRÓXIMO   H1 · total real vs. estimado         1 bloco   ← comece por aqui
-          H2 · histórico de preço por mercado  1–2 blocos
-          ── ponto de decisão: vale seguir? ──
-DEPOIS    H3 · spike de captura de cupom       1–2 blocos
-          E  · reestruturação técnica          5–7 blocos
+✅ FEITO   H1 · total real vs. estimado
+          H2 · histórico de preço por mercado
+          ── use por 2 ou 3 compras antes de seguir ──
+PRÓXIMO   E  · reestruturação em Svelte + TS   5–7 blocos
           F  · modelo de dados granular        4–6 blocos
+             + pendências 1 e 3 (mover lista, revogar convite)
+DEPOIS    H3 · captura por foto com OCR        2–3 blocos
           H4/H5 · inflação e previsão          3–4 blocos
           J  · LGPD, push, monitoramento       4–5 blocos
           I  · lojas                           3–4 blocos
 ```
 
+> **Uma recomendação de uso, não de código:** H1 e H2 só ficam úteis depois de
+> duas ou três compras finalizadas com o valor preenchido — antes disso a tela
+> de Preços está vazia por falta de dados, não por falta de recurso. Vale rodar
+> algumas compras reais antes de entrar no bloco E.
+
 **A exceção:** se o uso familiar crescer rápido e o documento da família começar
 a incomodar (lentidão ao abrir, custo de leitura subindo), F sobe na fila
 imediatamente. A instrumentação do bloco D já mede o suficiente para perceber
 isso antes de virar problema.
+
+### 4.1 Framework escolhido: Svelte
+
+A decisão coube à consultoria e a recomendação é **Svelte**, por quatro razões
+concretas neste projeto:
+
+**O time é uma pessoa.** React praticamente exige decisões acessórias — qual
+gerência de estado, qual roteador, como lidar com re-render. Svelte responde a
+essas perguntas por padrão, e cada decisão a menos é tempo que vai para o
+produto.
+
+**O modelo mental é o mais próximo do que já existe.** O app hoje é HTML, CSS e
+JS num arquivo, com reatividade manual. Svelte é HTML, CSS e JS num arquivo com
+reatividade automática. A migração é uma tradução; com React seria uma
+reescrita conceitual (JSX, hooks, dependências de efeito).
+
+**O bundle importa aqui.** É um PWA que precisa abrir rápido no corredor do
+mercado, muitas vezes em 3G ruim. Svelte compila para JS sem runtime; React
+carrega ~45 KB antes da primeira linha do seu código.
+
+**O contra-argumento honesto:** se um dia você quiser contratar ajuda ou
+reaproveitar componentes de terceiros, React tem um ecossistema
+incomparavelmente maior. Foi o que pesou do outro lado — e perdeu porque
+nenhuma dessas duas coisas está no horizonte do projeto.
+
+**A decisão é definitiva.** Revisitá-la no meio do bloco E custaria mais que
+qualquer diferença entre os dois.
 
 ---
 
@@ -250,9 +312,8 @@ Mantido da revisão 1, com uma correção que o bloco G impõe:
 1. **Uso pessoal/familiar ou produto de mercado?** Continua sendo a pergunta que
    destrava todas as outras. Sem resposta, o bloco J (LGPD) fica num limbo
    desconfortável — porque o bloco G já criou dados de terceiros.
-2. **Framework da Fase 4:** Svelte (recomendado) ou React?
-3. **Vale o spike H3** de captura de cupom, ou o diferencial se sustenta em
-   H1+H2+H4?
+2. ~~**Framework da Fase 4**~~ — **decidido: Svelte.** Ver §4.1.
+3. ~~**Vale o spike H3**~~ — **decidido: só OCR por foto**, sem NFC-e.
 4. **Novo:** limite de membros por família no plano grátis — decidir antes de
    haver famílias grandes.
 
@@ -268,15 +329,19 @@ Mantido da revisão 1, com uma correção que o bloco G impõe:
    Fase 4 · G colaboração familiar
    + correção do modal inacessível
 
+   Fase 4 · H1 total real vs. estimado
+   Fase 4 · H2 histórico de preço por mercado
+   + pendências 5 (scroll) e 6 (wake lock)
+
 🔄 PRÓXIMO
-   H1 · total real vs. estimado          ← 1 bloco, valor imediato
-   H2 · histórico de preço por mercado   ← o começo do diferencial
+   E · reestruturação em Svelte + TypeScript
+   F · modelo de dados granular (+ pendências 1 e 3)
 
 ⬜ DEPOIS
-   H3 spike · E reestruturação · F dados granulares
-   H4/H5 inflação e previsão · J LGPD e operação · I lojas
+   H3 OCR por foto · H4/H5 inflação e previsão
+   J LGPD e operação · I lojas
 ```
 
-**Em uma frase:** a fundação está pronta e o app já serve uma família de verdade;
-o próximo passo não é reescrever, é descobrir se o histórico de preços importa —
-e isso custa um bloco.
+**Em uma frase:** a fundação está pronta, o app serve uma família de verdade e já
+começa a responder "paguei mais caro esse mês?"; agora vale usá-lo por algumas
+compras antes de entrar na reescrita.
